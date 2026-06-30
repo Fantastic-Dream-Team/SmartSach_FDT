@@ -171,7 +171,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
     </script>
     
     <script type="module">
-        import { supabase } from '<?= $base ?>src/services/supabaseClient.js';
+        import { supabase } from '<?= $base ?>frontend/src/services/supabaseClient.js';
 
         // Asegurar que si el usuario visita esta página, su sesión de Supabase frontend esté limpia
         supabase.auth.signOut();
