@@ -159,12 +159,14 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         <!-- Correo -->
                         <div>
                             <input id="reg-email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Correo electrónico" type="email"/>
-                            <p id="err-email" class="hidden text-red-500 text-xs mt-1 px-4"></p>
+                            <p class="text-on-surface/40 text-xs mt-1 px-4">Debe contener @ &mdash; Ej: tucorreo@gmail.com</p>
+                            <p id="err-email" class="hidden text-red-500 text-xs mt-0.5 px-4"></p>
                         </div>
                         <!-- Contraseña -->
                         <div>
-                            <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña (mínimo 8 caracteres)" type="password"/>
-                            <p id="err-password" class="hidden text-red-500 text-xs mt-1 px-4"></p>
+                            <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña" type="password"/>
+                            <p class="text-on-surface/40 text-xs mt-1 px-4">Mín. 8 caracteres &bull; Mayúscula &bull; Minúscula &bull; Número &bull; Símbolo ($ &amp; # !)</p>
+                            <p id="err-password" class="hidden text-red-500 text-xs mt-0.5 px-4"></p>
                         </div>
                         <!-- Confirmar Contraseña -->
                         <div>
@@ -330,13 +332,22 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                 hasError = true;
             }
 
-            // Contraseña mínimo 8 caracteres
+            // Validación de contraseña: mínimo 8 chars + complejidad
             if (!password) {
                 showFieldError('password', 'La contraseña es obligatoria.');
                 hasError = true;
-            } else if (password.length < 8) {
-                showFieldError('password', 'La contraseña debe tener al menos 8 caracteres.');
-                hasError = true;
+            } else {
+                const faltantes = [];
+                if (password.length < 8)            faltantes.push('al menos 8 caracteres');
+                if (!/[A-Z]/.test(password))         faltantes.push('una letra mayúscula (A-Z)');
+                if (!/[a-z]/.test(password))         faltantes.push('una letra minúscula (a-z)');
+                if (!/[0-9]/.test(password))         faltantes.push('un número (0-9)');
+                if (!/[$&()#!@%*?_\-]/.test(password)) faltantes.push('un símbolo ($ & # ! @ % *)');
+
+                if (faltantes.length > 0) {
+                    showFieldError('password', 'Tu contraseña necesita: ' + faltantes.join(', ') + '.');
+                    hasError = true;
+                }
             }
 
             // Confirmación de contraseña
@@ -373,10 +384,10 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                 // Mapear errores de Supabase a mensajes amigables en español
                 if (error.message.includes('already registered') || error.message.includes('User already registered')) {
                     showFieldError('email', 'Este correo ya está registrado. Intenta iniciar sesión.');
-                } else if (error.message.includes('Password should be')) {
-                    showFieldError('password', 'La contraseña no cumple los requisitos de seguridad de Supabase.');
+                } else if (error.message.includes('Password should be') || error.message.includes('password')) {
+                    showFieldError('password', 'Contraseña inválida. Recuerda incluir: mayúscula, minúscula, número y símbolo ($ & # !).');
                 } else if (error.message.includes('invalid email') || error.message.includes('Invalid email')) {
-                    showFieldError('email', 'El correo ingresado no tiene un formato válido.');
+                    showFieldError('email', 'El correo no tiene un formato válido. Asegúrate de incluir el @.');
                 } else {
                     showMessage('error', 'Error al registrar: ' + error.message);
                 }
