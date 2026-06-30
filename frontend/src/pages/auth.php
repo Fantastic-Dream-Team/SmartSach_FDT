@@ -8,6 +8,9 @@ $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {
     $base .= '/';
 }
+
+$supabaseUrl = getenv('SUPABASE_URL') ?: '';
+$supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
 ?>
 <!DOCTYPE html>
 <html class="light" lang="es">
@@ -34,78 +37,47 @@ if (substr($base, -1) !== '/') {
                         "outline": "#717973",
                         "secondary": "#006e2a",
                         "tertiary": "#163a6c"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "md": "24px",
-                        "xl": "80px",
-                        "sm": "12px",
-                        "lg": "48px",
-                        "gutter": "16px",
-                        "xs": "4px",
-                        "max-width": "1200px",
-                        "margin-mobile": "20px",
-                        "margin-desktop": "auto",
-                        "base": "8px"
-                    },
-                    "fontFamily": {
-                        "body-md": ["Inter"],
-                        "headline-lg": ["Inter"],
-                        "label-md": ["Inter"]
                     }
-                },
-            },
+                }
+            }
         }
     </script>
-    <!-- Estilos Separados -->
     <link rel="stylesheet" href="<?= $base ?>assets/css/style.css" />
+    <script>
+        // Inyectar variables de entorno de Supabase al frontend
+        window.SUPABASE_URL = "<?= $supabaseUrl ?>";
+        window.SUPABASE_ANON_KEY = "<?= $supabaseAnonKey ?>";
+    </script>
 </head>
 <body class="bg-surface text-on-surface font-body-md overflow-x-hidden min-h-screen flex flex-col">
     <main class="flex flex-col md:flex-row flex-grow">
-        <!-- Left Panel (Branding & Welcome) -->
+        <!-- Left Panel -->
         <section class="w-full md:w-[50%] bg-primary text-on-primary flex flex-col items-center justify-center p-8 relative overflow-visible z-20 min-h-[400px] md:min-h-screen">
-            <!-- Organic shape separator -->
             <div class="organic-curve"></div>
             <div class="max-w-md w-full flex flex-col items-center text-center relative z-30">
-                <!-- Branding -->
                 <div class="mb-8">
                     <div class="w-48 h-48 flex items-center justify-center mb-4 mx-auto">
                         <img alt="smartSACH Logo" class="w-full h-full object-contain" src="<?= $base ?>assets/sachlogo.png"/>
                     </div>
                     <h1 class="text-3xl font-bold tracking-tight">Smartsach</h1>
                 </div>
-                <!-- Text Content -->
                 <h2 class="text-4xl font-bold mb-4">Bienvenidos panameños</h2>
                 <p class="text-base opacity-90 leading-relaxed mb-8 max-w-sm mx-auto">
                     Nuestra página web, donde encontrarás información valiosa, como agendas y rutas de recolección en Chiriquí.
                 </p>
-                <!-- Botón para volver al Home estático -->
                 <a href="<?= $base ?>home" class="border-2 border-white/60 hover:border-white text-white px-8 py-2 rounded-full font-semibold transition-all hover:bg-white/10 active:scale-95">
                     Volver al Inicio
                 </a>
-                
-                <nav class="mt-12 flex items-center gap-4 text-white/70 text-sm font-medium">
-                    <a class="hover:text-white transition-colors" href="<?= $base ?>home#nosotros">Nosotros</a>
-                    <span class="opacity-30">|</span>
-                    <a class="hover:text-white transition-colors" href="#">Ayuda</a>
-                </nav>
             </div>
         </section>
 
         <!-- Right Panel (Forms) -->
         <section class="w-full md:w-[50%] flex flex-col items-center justify-center p-8 bg-white relative z-10">
             <div class="w-full max-w-[400px] flex flex-col items-center">
-                <!-- Center Logo -->
                 <div class="mb-8 w-full flex justify-center">
                     <img alt="smartSACH Logo" class="h-16 md:h-20 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEyFjWknnizd612_uBEc-h8DbkWzMAM0nNU1rgJOYVXuoui8h1AApLST-ModXuX7iuTZh4z-5XVtPBQe9I7Wt6o5Dv_stmPWZaofVzM9DRHCx5OUxgzRikurRlzCW_NKLnbDvuZ0uYTfNCfxeEf26UHdMJDauIUtiu591iYMxVdtF9hz-S9rWBxsPBk4dGy2cveq_x-sAj9G8SU213IU2tpjVjBgFQv5WkPXOreBNurEKhRbIlEAbEG5pKNvlZzTnsSWedNQChdts"/>
                 </div>
 
-                <!-- Notificaciones de errores de backend en el flujo auth -->
                 <?php if (isset($_SESSION['error'])): ?>
                     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-full text-center text-sm w-full mb-4">
                         <?= htmlspecialchars($_SESSION['error']) ?>
@@ -120,17 +92,26 @@ if (substr($base, -1) !== '/') {
                     </div>
                 <?php endif; ?>
 
+                <div id="js-error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded-full text-center text-sm w-full mb-4"></div>
+                <div id="js-success" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-full text-center text-sm w-full mb-4"></div>
+
+                <!-- Formulario invisible para enviar sesión PHP -->
+                <form id="php-session-form" action="<?= $base ?>auth?action=login" method="POST" style="display: none;">
+                    <input type="hidden" name="email" id="php_email">
+                    <input type="hidden" name="auth_id" id="php_auth_id">
+                </form>
+
                 <!-- Login Container -->
                 <div class="<?= $showRegister ? 'auth-hidden' : 'auth-visible' ?> w-full text-center" id="login-container">
                     <p class="text-on-surface-variant mb-6">Inicie sesión para acceder a la plataforma</p>
-                    <form class="space-y-4" action="<?= $base ?>auth?action=login" method="POST">
+                    <form id="login-form" class="space-y-4">
                         <div>
-                            <input name="email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Correo electrónico" type="email" required/>
+                            <input id="login-email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Correo electrónico" type="email" required/>
                         </div>
                         <div>
-                            <input name="password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Contraseña" type="password" required/>
+                            <input id="login-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Contraseña" type="password" required/>
                         </div>
-                        <button type="submit" class="w-full bg-[#1e4638] py-3 rounded-full text-white font-semibold hover:bg-primary transition-all shadow-lg active:scale-95 mt-4">
+                        <button type="submit" id="btn-login" class="w-full bg-[#1e4638] py-3 rounded-full text-white font-semibold hover:bg-primary transition-all shadow-lg active:scale-95 mt-4">
                             Ingresar
                         </button>
                     </form>
@@ -148,11 +129,11 @@ if (substr($base, -1) !== '/') {
                         </button>
                         <h3 class="text-2xl font-bold text-primary">Crear cuenta</h3>
                     </div>
-                    <form class="space-y-4" action="<?= $base ?>auth?action=register" method="POST">
-                        <input name="nombre" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Nombre Completo" type="text" required/>
-                        <input name="email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Correo electrónico" type="email" required/>
-                        <input name="password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña (mínimo 6 caracteres)" type="password" required/>
-                        <button type="submit" class="w-full bg-secondary py-3 rounded-full text-white font-semibold hover:brightness-110 shadow-md transition-all mt-4">
+                    <form id="register-form" class="space-y-4">
+                        <input id="reg-nombre" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Nombre Completo" type="text" required/>
+                        <input id="reg-email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Correo electrónico" type="email" required/>
+                        <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña (mínimo 6 caracteres)" type="password" required/>
+                        <button type="submit" id="btn-register" class="w-full bg-secondary py-3 rounded-full text-white font-semibold hover:brightness-110 shadow-md transition-all mt-4">
                             Registrarse
                         </button>
                     </form>
@@ -161,13 +142,10 @@ if (substr($base, -1) !== '/') {
         </section>
     </main>
 
-
-
     <script>
         function toggleAuth(showLogin) {
             const login = document.getElementById('login-container');
             const register = document.getElementById('register-container');
-            
             if (showLogin) {
                 register.classList.replace('auth-visible', 'auth-hidden');
                 login.classList.replace('auth-hidden', 'auth-visible');
@@ -176,6 +154,92 @@ if (substr($base, -1) !== '/') {
                 register.classList.replace('auth-hidden', 'auth-visible');
             }
         }
+
+        function showMessage(type, message) {
+            const errEl = document.getElementById('js-error');
+            const succEl = document.getElementById('js-success');
+            errEl.classList.add('hidden');
+            succEl.classList.add('hidden');
+            if (type === 'error') {
+                errEl.textContent = message;
+                errEl.classList.remove('hidden');
+            } else {
+                succEl.textContent = message;
+                succEl.classList.remove('hidden');
+            }
+        }
+    </script>
+    
+    <script type="module">
+        import { supabase } from '<?= $base ?>src/services/supabaseClient.js';
+
+        // Asegurar que si el usuario visita esta página, su sesión de Supabase frontend esté limpia
+        supabase.auth.signOut();
+
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login');
+            btn.disabled = true;
+            btn.textContent = "Iniciando sesión...";
+
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (error) {
+                showMessage('error', error.message);
+                btn.disabled = false;
+                btn.textContent = "Ingresar";
+            } else {
+                // Notificar al backend PHP
+                document.getElementById('php_email').value = data.user.email;
+                document.getElementById('php_auth_id').value = data.user.id;
+                document.getElementById('php-session-form').submit();
+            }
+        });
+
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-register');
+            btn.disabled = true;
+            btn.textContent = "Registrando...";
+
+            const nombre = document.getElementById('reg-nombre').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+
+            // En Supabase, el registro pasa la metadata extra
+            const { data, error } = await supabase.auth.signUp({
+                email: email,
+                password: password,
+                options: {
+                    data: {
+                        nombre: nombre
+                    }
+                }
+            });
+
+            if (error) {
+                showMessage('error', error.message);
+                btn.disabled = false;
+                btn.textContent = "Registrarse";
+            } else {
+                // Dependiendo de si se requiere confirmación por email
+                if (data.user && data.user.identities && data.user.identities.length === 0) {
+                    showMessage('error', 'Este correo ya existe en Supabase o se requiere verificación.');
+                    btn.disabled = false;
+                    btn.textContent = "Registrarse";
+                } else {
+                    showMessage('success', 'Registro completado en Supabase. Si confirmaste, inicia sesión.');
+                    setTimeout(() => { toggleAuth(true); }, 2000);
+                }
+            }
+        });
     </script>
 </body>
 </html>
+

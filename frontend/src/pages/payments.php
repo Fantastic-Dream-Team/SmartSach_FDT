@@ -36,8 +36,9 @@ if (substr($base, -1) !== '/') {
                 </div>
 
                 <!-- Botón de Pago Simulado -->
-                <?php if ($saldoPendiente > 0): ?>
+                <?php if ($saldoPendiente > 0 && isset($suscripcionMorosa)): ?>
                     <form action="<?= $base ?>payments" method="POST" class="mt-6">
+                        <input type="hidden" name="suscripcion_id" value="<?= htmlspecialchars($suscripcionMorosa) ?>">
                         <button type="submit" class="w-full bg-secondary hover:bg-[#00ab5d] text-white py-3 rounded-full font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined">payments</span>
                             Simular Pago Exitoso
