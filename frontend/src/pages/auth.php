@@ -130,7 +130,13 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         <h3 class="text-2xl font-bold text-primary">Crear cuenta</h3>
                     </div>
                     <form id="register-form" class="space-y-4">
-                        <input id="reg-nombre" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Nombre Completo" type="text" required/>
+                        <div class="flex gap-2">
+                            <input id="reg-nombre" class="w-1/2 bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Nombre" type="text" required/>
+                            <input id="reg-apellido" class="w-1/2 bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Apellido" type="text" required/>
+                        </div>
+                        <input id="reg-cedula" maxlength="9" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Cédula (9 dígitos)" type="text" required/>
+                        <input id="reg-telefono" maxlength="9" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Teléfono (XXXX-XXXX)" type="text" required/>
+                        <input id="reg-direccion" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Dirección" type="text" required/>
                         <input id="reg-email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Correo electrónico" type="email" required/>
                         <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña (mínimo 6 caracteres)" type="password" required/>
                         <button type="submit" id="btn-register" class="w-full bg-secondary py-3 rounded-full text-white font-semibold hover:brightness-110 shadow-md transition-all mt-4">
@@ -202,15 +208,48 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             }
         });
 
+        // Máscaras de entrada
+        const cedulaInput = document.getElementById('reg-cedula');
+        cedulaInput.addEventListener('input', function(e) {
+            this.value = this.value.replace(/\D/g, ''); // Bloquear no números
+        });
+
+        const telefonoInput = document.getElementById('reg-telefono');
+        telefonoInput.addEventListener('input', function(e) {
+            let val = this.value.replace(/\D/g, ''); // Remover guiones y letras temporalmente
+            if (val.length > 4) {
+                val = val.substring(0, 4) + '-' + val.substring(4, 8);
+            }
+            this.value = val;
+        });
+
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('btn-register');
             btn.disabled = true;
             btn.textContent = "Registrando...";
 
-            const nombre = document.getElementById('reg-nombre').value;
-            const email = document.getElementById('reg-email').value;
+            const nombre = document.getElementById('reg-nombre').value.trim();
+            const apellido = document.getElementById('reg-apellido').value.trim();
+            const cedula = document.getElementById('reg-cedula').value.trim();
+            const telefono = document.getElementById('reg-telefono').value.trim();
+            const direccion = document.getElementById('reg-direccion').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value;
+
+            if (cedula.length !== 9) {
+                showMessage('error', 'La cédula debe tener exactamente 9 dígitos.');
+                btn.disabled = false;
+                btn.textContent = "Registrarse";
+                return;
+            }
+
+            if (telefono.length !== 9) {
+                showMessage('error', 'El teléfono debe tener el formato XXXX-XXXX.');
+                btn.disabled = false;
+                btn.textContent = "Registrarse";
+                return;
+            }
 
             // En Supabase, el registro pasa la metadata extra
             const { data, error } = await supabase.auth.signUp({
@@ -218,7 +257,11 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                 password: password,
                 options: {
                     data: {
-                        nombre: nombre
+                        nombre: nombre,
+                        apellido: apellido,
+                        cedula: cedula,
+                        telefono: telefono,
+                        direccion: direccion
                     }
                 }
             });
