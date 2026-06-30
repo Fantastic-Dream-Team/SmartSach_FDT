@@ -1,146 +1,209 @@
--- Script de creación y actualización de base de datos para Smartsach (PostgreSQL) - Refactorizado a Zonas y Noticias
+-- ==========================================
+-- SCRIPT LIMPIO Y OPTIMIZADO PARA SMARTSACH
+-- INTEGRADO CON SUPABASE AUTH DIRECTO Y POSTGIS
+-- ==========================================
 
--- Eliminar tablas si existen para reiniciar limpiamente en orden de dependencias
-DROP TABLE IF EXISTS comentarios_reportes CASCADE;
-DROP TABLE IF EXISTS reportes CASCADE;
-DROP TABLE IF EXISTS pagos CASCADE;
-DROP TABLE IF EXISTS rutas CASCADE;
-DROP TABLE IF EXISTS noticias CASCADE;
-DROP TABLE IF EXISTS usuarios CASCADE;
-DROP TABLE IF EXISTS zonas CASCADE;
+-- Habilitar extensión para geolocalización[cite: 2]
+CREATE EXTENSION IF NOT EXISTS postgis;
 
--- 1. Tabla de Zonas de Recolección
-CREATE TABLE zonas (
-    id SERIAL PRIMARY KEY,
-    nombre_zona VARCHAR(100) NOT NULL,
-    descripcion TEXT,
-    estado VARCHAR(20) DEFAULT 'inactiva' CHECK (estado IN ('inactiva', 'en_ruta', 'finalizada'))
+-- 1. Tabla de Usuarios (Sincronizada con Supabase Auth)[cite: 2]
+CREATE TABLE public.usuarios (
+    usuario_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    auth_id UUID UNIQUE, 
+    nombre VARCHAR(50) NOT NULL,
+    apellido VARCHAR(50) NOT NULL,
+    cedula VARCHAR(20) NOT NULL UNIQUE,
+    telefono VARCHAR(20), 
+    direccion VARCHAR(50), 
+    correo_electronico VARCHAR(100) NOT NULL UNIQUE,
+    estado_verificacion VARCHAR(20) CHECK (estado_verificacion IN ('pendiente', 'activo', 'suspendido')) DEFAULT 'pendiente',
+    fecha_registro TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+CREATE INDEX idx_usuarios_correo ON public.usuarios(correo_electronico);
+CREATE INDEX idx_usuarios_cedula ON public.usuarios(cedula);
 
--- 2. Tabla de Usuarios (Soporte para roles y asignación de zona para conductores)
-CREATE TABLE usuarios (
-    id SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL,
-    rol VARCHAR(20) DEFAULT 'cliente' CHECK (rol IN ('cliente', 'gestor', 'conductor')),
-    zona_id INT DEFAULT NULL, -- Zona asignada si es conductor
-    foto_perfil VARCHAR(255) DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_usuario_zona FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE SET NULL
-);
-
--- 3. Tabla de Rutas / Direcciones de Clientes (Casas asociadas a una zona de recolección)
-CREATE TABLE rutas (
-    id SERIAL PRIMARY KEY,
+-- 2. Tabla de Ubicaciones (Uso de GEOGRAPHY para precisión GPS)[cite: 2]
+CREATE TABLE public.ubicaciones_servicio (
+    ubicacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INT NOT NULL,
-    zona_id INT DEFAULT NULL, -- Zona a la que pertenece la casa del cliente
-    nombre VARCHAR(100) NOT NULL,
-    descripcion TEXT,
+    nombre_referencia VARCHAR(50),
+    coordenadas_gps GEOGRAPHY(POINT, 4326) NOT NULL, 
+    descripcion_direccion TEXT,
+    foto_url VARCHAR(255),
+    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE
+);
+
+-- 3. Tabla de Rutas[cite: 2]
+CREATE TABLE public.rutas (
+    ruta_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nombre_ruta VARCHAR(100) NOT NULL,
+    zona_sector VARCHAR(100),
+    horario_estimado VARCHAR(100),
+    estado_ruta VARCHAR(20) CHECK (estado_ruta IN ('activa', 'mantenimiento', 'inactiva')) DEFAULT 'activa'
+);
+
+-- 4. Suscripciones[cite: 2]
+CREATE TABLE public.suscripciones (
+    suscripcion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
+    ubicacion_id INT NOT NULL REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE,
+    ruta_id INT NOT NULL REFERENCES public.rutas(ruta_id),
+    fecha_activacion DATE,
+    proximo_vencimiento DATE,
+    estado_pago VARCHAR(20) CHECK (estado_pago IN ('al_dia', 'moroso')) DEFAULT 'al_dia'
+);
+
+-- 5. Historial de Pagos[cite: 2]
+CREATE TABLE public.pagos (
+    pago_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    suscripcion_id INT NOT NULL REFERENCES public.suscripciones(suscripcion_id) ON DELETE CASCADE,
+    monto DECIMAL(10,2) NOT NULL,
+    fecha_pago TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    metodo_pago VARCHAR(50),
+    comprobante_url VARCHAR(255)
+);
+
+-- 6. Rastreo de Camiones[cite: 2]
+CREATE TABLE public.camiones_rastreo (
+    camion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ruta_id INT NOT NULL REFERENCES public.rutas(ruta_id) ON DELETE CASCADE,
+    placa_vehiculo VARCHAR(20) NOT NULL UNIQUE,
     latitud DECIMAL(10, 8) NOT NULL,
     longitud DECIMAL(11, 8) NOT NULL,
-    costo DECIMAL(10, 2) DEFAULT 15.00 NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_usuario_rutas FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    CONSTRAINT fk_zona_rutas FOREIGN KEY (zona_id) REFERENCES zonas(id) ON DELETE SET NULL
+    ultima_actualizacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. Tabla de Pagos
-CREATE TABLE pagos (
-    id SERIAL PRIMARY KEY,
-    usuario_id INT NOT NULL,
-    monto DECIMAL(10, 2) NOT NULL,
-    estado VARCHAR(20) DEFAULT 'Pendiente' CHECK (estado IN ('Pagado', 'Pendiente')),
-    fecha_pago TIMESTAMP DEFAULT NULL,
-    referencia VARCHAR(100) DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_usuario_pagos FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+-- 7. Sistema de Notificaciones[cite: 2]
+CREATE TABLE public.notificaciones (
+    notificacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
+    titulo VARCHAR(100) NOT NULL,
+    mensaje TEXT NOT NULL,
+    tipo_notificacion VARCHAR(20) CHECK (tipo_notificacion IN ('pago', 'ruta', 'sistema', 'incidencia')) DEFAULT 'sistema',
+    leido BOOLEAN DEFAULT FALSE,
+    fecha_envio TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. Tabla de Reportes (Con control de lectura para el gestor)
-CREATE TABLE reportes (
-    id SERIAL PRIMARY KEY,
-    usuario_id INT NOT NULL,
-    ruta_id INT,
-    descripcion TEXT NOT NULL,
-    foto_url VARCHAR(255) DEFAULT NULL,
-    estado VARCHAR(20) DEFAULT 'Pendiente' CHECK (estado IN ('Pendiente', 'En Proceso', 'Resuelto')),
-    visto_gestor BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_usuario_reportes FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
-    CONSTRAINT fk_ruta_reportes FOREIGN KEY (ruta_id) REFERENCES rutas(id) ON DELETE SET NULL
+-- 8. Reportes e Incidencias[cite: 2]
+CREATE TABLE public.reportes_incidencias (
+    reporte_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
+    ubicacion_id INT NOT NULL REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE,
+    tipo_incidencia VARCHAR(30) CHECK (tipo_incidencia IN ('no_paso_camion', 'mala_atencion', 'desperdicio_en_via', 'otro')) NOT NULL,
+    descripcion TEXT,
+    estado_reporte VARCHAR(20) CHECK (estado_reporte IN ('abierto', 'en_proceso', 'resuelto', 'cerrado')) DEFAULT 'abierto',
+    fecha_reporte TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
-
--- 6. Tabla de Comentarios de Reportes (Hilos de conversación)
-CREATE TABLE comentarios_reportes (
-    id SERIAL PRIMARY KEY,
-    reporte_id INT NOT NULL,
-    usuario_id INT NOT NULL,
-    comentario TEXT NOT NULL,
-    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_reporte_comentarios FOREIGN KEY (reporte_id) REFERENCES reportes(id) ON DELETE CASCADE,
-    CONSTRAINT fk_usuario_comentarios FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
-);
-
--- 7. Tabla de Noticias (Blog / Novedades de Reciclaje)
-CREATE TABLE noticias (
-    id SERIAL PRIMARY KEY,
-    titulo VARCHAR(255) NOT NULL,
-    contenido TEXT NOT NULL,
-    fecha_publicacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    autor_id INT DEFAULT NULL,
-    CONSTRAINT fk_autor_noticia FOREIGN KEY (autor_id) REFERENCES usuarios(id) ON DELETE SET NULL
-);
-
--- Índices de Base de Datos
-CREATE INDEX idx_usuarios_zona ON usuarios(zona_id);
-CREATE INDEX idx_rutas_zona ON rutas(zona_id);
-CREATE INDEX idx_pagos_usuario ON pagos(usuario_id);
-CREATE INDEX idx_reportes_usuario ON reportes(usuario_id);
-CREATE INDEX idx_comentarios_reporte ON comentarios_reportes(reporte_id);
-CREATE INDEX idx_noticias_fecha ON noticias(fecha_publicacion DESC);
 
 -- ==========================================
--- INSERTAR DATOS INICIALES DE PRUEBA
--- Contraseña por defecto para todos: '123456'
--- password_hash BCRYPT: '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq'
+-- FUNCIONES, TRIGGERS Y VISTAS
 -- ==========================================
 
--- Zonas iniciales
-INSERT INTO zonas (nombre_zona, descripcion, estado) VALUES
-('David Centro', 'Casco viejo de David, zona comercial y residencial densa', 'inactiva'),
-('David Sur', 'Barriadas del sector sur, San Cristóbal y alrededores', 'inactiva'),
-('Boquete Centro', 'Bajo Boquete, zona residencial y turística', 'inactiva');
+-- TRIGGER 1: Sincronización Automática de Registro[cite: 2]
+CREATE OR REPLACE FUNCTION public.fn_sincronizar_auth_usuario()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO public.usuarios (
+        auth_id,
+        nombre, 
+        apellido, 
+        cedula, 
+        telefono,    
+        direccion,   
+        correo_electronico, 
+        estado_verificacion
+    )
+    VALUES (
+        NEW.id, 
+        COALESCE(NEW.raw_user_meta_data->>'nombre', 'Usuario'), 
+        COALESCE(NEW.raw_user_meta_data->>'apellido', 'Nuevo'),   
+        COALESCE(NEW.raw_user_meta_data->>'cedula', '0-000-0000'), 
+        NEW.raw_user_meta_data->>'telefono', 
+        SUBSTRING(COALESCE(NEW.raw_user_meta_data->>'direccion', '') FROM 1 FOR 50), 
+        NEW.email,
+        'pendiente'
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Usuarios por rol (conductores vinculados a zonas)
-INSERT INTO usuarios (nombre, email, password, rol, zona_id) VALUES
-('Fabian Cliente', 'cliente@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'cliente', NULL),
-('Fabian Gestor', 'gestor@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'gestor', NULL),
-('Pedro Conductor David', 'conductor1@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'conductor', 1), -- David Centro
-('Juan Conductor Sur', 'conductor2@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'conductor', 2); -- David Sur
+DROP TRIGGER IF EXISTS tr_on_auth_user_created ON auth.users;
+CREATE TRIGGER tr_on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.fn_sincronizar_auth_usuario();
 
--- Clientes secundarios con casas en David Centro para multipunto (Pedro)
-INSERT INTO usuarios (nombre, email, password, rol) VALUES
-('Vecino David 1', 'vecino1@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'cliente'),
-('Vecino David 2', 'vecino2@smartsach.com', '$2y$10$USk.QCJibNQW/O4cnW7meeHVTtw68qCnjAHo7ZAyHj5c.WT7xhuKq', 'cliente');
+-- TRIGGER 2: Activación Inicial de Suscripción[cite: 2]
+CREATE OR REPLACE FUNCTION public.fn_activar_suscripcion_inicial()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.estado_verificacion = 'pendiente' AND NEW.estado_verificacion = 'activo' THEN
+        INSERT INTO public.suscripciones (usuario_id, ubicacion_id, ruta_id, fecha_activacion, proximo_vencimiento, estado_pago)
+        SELECT 
+            NEW.usuario_id, 
+            ub.ubicacion_id, 
+            1, 
+            CURRENT_DATE, 
+            (CURRENT_DATE + INTERVAL '30 days'), 
+            'al_dia'
+        FROM public.ubicaciones_servicio ub 
+        WHERE ub.usuario_id = NEW.usuario_id 
+        LIMIT 1;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Viviendas en David Centro (Zona ID: 1)
--- Coordenadas cercanas en David Centro para simular paradas reales
-INSERT INTO rutas (usuario_id, zona_id, nombre, descripcion, latitud, longitud, costo) VALUES
-(1, 1, 'Casa Principal David', 'Frente al Parque Miguel de Cervantes Saavedra', 8.428670, -82.428750, 15.00), -- Paz y salvo (Pago pendiente de 40.00 abajo)
-(5, 1, 'Casa Vecino 1', 'Calle C Norte, David', 8.431200, -82.429500, 15.00),
-(6, 1, 'Casa Vecino 2', 'Avenida 3era Este, David', 8.427100, -82.425100, 15.00);
+DROP TRIGGER IF EXISTS tr_activar_suscripcion_inicial ON public.usuarios;
+CREATE TRIGGER tr_activar_suscripcion_inicial
+AFTER UPDATE ON public.usuarios
+FOR EACH ROW EXECUTE FUNCTION public.fn_activar_suscripcion_inicial();
 
--- Pagos de prueba
-INSERT INTO pagos (usuario_id, monto, estado, fecha_pago, referencia) VALUES
-(1, 15.00, 'Pagado', '2026-06-01 08:30:00', 'REF-109283'),
-(5, 15.00, 'Pagado', '2026-06-01 09:30:00', 'REF-109284'); -- Vecino 1 Paz y Salvo
+-- TRIGGER 3: Actualización de metadatos de Camión[cite: 2]
+CREATE OR REPLACE FUNCTION public.fn_alerta_proximidad_sach()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.latitud <> OLD.latitud OR NEW.longitud <> OLD.longitud THEN
+        NEW.ultima_actualizacion = CURRENT_TIMESTAMP;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
--- Vecino 2 está Moroso (tiene una deuda pendiente de 15.00)
-INSERT INTO pagos (usuario_id, monto, estado) VALUES
-(6, 15.00, 'Pendiente');
+DROP TRIGGER IF EXISTS tr_alerta_proximidad_sach ON public.camiones_rastreo;
+CREATE TRIGGER tr_alerta_proximidad_sach
+BEFORE UPDATE ON public.camiones_rastreo
+FOR EACH ROW EXECUTE FUNCTION public.fn_alerta_proximidad_sach();
 
--- Noticias iniciales
-INSERT INTO noticias (titulo, contenido, autor_id) VALUES
-('Horarios de Lluvia en Chiriquí', 'Debido a la temporada lluviosa, se solicita a los ciudadanos asegurar bien los contenedores para evitar derrames y contaminación.', 2),
-('Manual del Buen Reciclador', 'Separe sus botellas plásticas transparentes (PET-1) del cartón corrugado. Ambos materiales deben entregarse limpios y aplastados.', 2);
+-- PROCEDIMIENTO ALMACENADO: Procesar Pagos[cite: 2]
+CREATE OR REPLACE PROCEDURE public.sp_procesar_pago_sach(
+    p_suscripcion_id INT,
+    p_monto DECIMAL(10,2),
+    p_metodo VARCHAR(50)
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    INSERT INTO public.pagos (suscripcion_id, monto, metodo_pago)
+    VALUES (p_suscripcion_id, p_monto, p_metodo);
+
+    UPDATE public.suscripciones 
+    SET proximo_vencimiento = (proximo_vencimiento + INTERVAL '30 days'),
+        estado_pago = 'al_dia'
+    WHERE suscripcion_id = p_suscripcion_id;
+END;
+$$;
+
+-- VISTA: Paz y Salvo Financiero[cite: 3]
+CREATE OR REPLACE VIEW public.vista_paz_y_salvo_usuarios AS
+SELECT 
+    u.cedula,
+    (u.nombre || ' ' || u.apellido) AS cliente,
+    s.proximo_vencimiento,
+    CASE 
+        WHEN s.proximo_vencimiento >= CURRENT_DATE THEN 'PAZ Y SALVO'
+        ELSE 'EN MORA'
+    END AS estado_financiero,
+    (s.proximo_vencimiento - CURRENT_DATE) AS dias_para_vencimiento
+FROM public.usuarios u
+JOIN public.suscripciones s ON u.usuario_id = s.usuario_id;
