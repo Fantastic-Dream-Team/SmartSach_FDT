@@ -181,7 +181,7 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_rol'] === 'cliente') {
     </header>
 
     <!-- Botón flotante Volver Arriba -->
-    <button id="btn-scroll-top" onclick="scrollToTop()" class="bg-secondary hover:bg-[#00ab5d] text-white p-3 rounded-full shadow-lg transition-all transform hover:scale-110 active:scale-95 flex items-center justify-center">
+    <button id="btn-scroll-top" onclick="scrollToTop()" class="hidden fixed bottom-6 right-6 z-[9999] bg-secondary hover:bg-[#00ab5d] text-white p-3 rounded-full shadow-lg transition-all transform hover:scale-110 active:scale-95 items-center justify-center">
         <span class="material-symbols-outlined">arrow_upward</span>
     </button>
 
@@ -195,9 +195,11 @@ if (isset($_SESSION['user_id']) && $_SESSION['user_rol'] === 'cliente') {
         window.onscroll = function() {
             var btn = document.getElementById("btn-scroll-top");
             if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                btn.style.display = "flex";
+                btn.classList.remove('hidden');
+                btn.classList.add('flex');
             } else {
-                btn.style.display = "none";
+                btn.classList.remove('flex');
+                btn.classList.add('hidden');
             }
         };
 

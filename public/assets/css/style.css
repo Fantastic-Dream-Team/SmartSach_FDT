@@ -1,60 +1,19 @@
 /* ==========================================================================
-   smartSACH Custom Stylesheet - CSS Separado del Backend
+   smartSACH Custom Stylesheet
+   Solo contiene reglas sin equivalente directo en Tailwind CSS.
    ========================================================================== */
 
-/* Configuración global de fuentes y símbolos */
+/* Configuración de variación tipográfica para Material Symbols (API de Google Fonts) */
 .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-body {
-    font-family: 'Inter', sans-serif;
-}
-
-/* Ocultar el panel de instrucciones de Leaflet Routing Machine para mantener el mapa limpio */
+/* Override del panel de instrucciones de Leaflet Routing Machine (librería externa) */
 .leaflet-routing-container {
     display: none !important;
 }
 
-/* Botón flotante Volver Arriba */
-#btn-scroll-top {
-    display: none;
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 9999;
-}
-
-/* Curva orgánica del fondo del panel de login */
-.organic-curve {
-    position: absolute;
-    right: -100px;
-    top: 0;
-    height: 100%;
-    width: 250px;
-    background-color: #2d5a46;
-    border-radius: 0 50% 50% 0;
-    z-index: 10;
-}
-
-@media (max-width: 768px) {
-    .organic-curve {
-        display: none;
-    }
-}
-
-/* Clases de transiciones/visibilidad para el login y registro */
-.auth-hidden {
-    display: none;
-    opacity: 0;
-}
-
-.auth-visible {
-    display: block;
-    opacity: 1;
-}
-
-/* Filtro visual de mapa inactivo (oscurecido) */
+/* Filtro visual de mapa inactivo — sin equivalente exacto en Tailwind sin config extra */
 .map-inactive {
     filter: brightness(0.65) contrast(1.15) saturate(0.85);
 }
