@@ -17,6 +17,7 @@ class Database {
                 $user = getenv('DB_USER') ?: (isset($_ENV['DB_USER']) ? $_ENV['DB_USER'] : '');
                 $password = getenv('DB_PASSWORD') ?: (isset($_ENV['DB_PASSWORD']) ? $_ENV['DB_PASSWORD'] : '');
                 $sslmode = getenv('DB_SSLMODE') ?: (isset($_ENV['DB_SSLMODE']) ? $_ENV['DB_SSLMODE'] : 'require');
+                $sslmode = strtolower($sslmode);
 
                 // Forzar SSL requerido por Supabase
                 if (empty($host) || empty($dbname) || empty($user) || empty($password)) {
@@ -33,9 +34,16 @@ class Database {
                 ];
 
                 self::$conn = new PDO($dsn, $user, $password, $options);
-            } catch (PDOException $e) {
-                // Registrar error en producción
-                throw new Exception("Error de conexión a Supabase: " . $e->getMessage());
+            } catch (Exception $e) {
+                // En lugar de exponer un stack trace, devolvemos un JSON limpio
+                http_response_code(500);
+                header('Content-Type: application/json');
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => 'Error de conexión a la base de datos.',
+                    'detail' => 'Verifique la configuración o el estado del servidor PostgreSQL.'
+                ]);
+                exit;
             }
         }
         return self::$conn;
