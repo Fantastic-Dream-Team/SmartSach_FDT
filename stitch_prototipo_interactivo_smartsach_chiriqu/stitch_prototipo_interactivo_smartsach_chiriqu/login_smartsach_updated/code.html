@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>smartSACH - Acceso</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#2d5a46",
+                        "primary-container": "#2d5a46",
+                        "on-primary": "#ffffff",
+                        "surface": "#fbf9f8",
+                        "surface-container": "#f0eded",
+                        "on-surface": "#1b1c1c",
+                        "on-surface-variant": "#414944",
+                        "outline": "#717973",
+                        "secondary": "#006e2a",
+                        "tertiary": "#163a6c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "24px",
+                        "xl": "80px",
+                        "sm": "12px",
+                        "lg": "48px",
+                        "gutter": "16px",
+                        "xs": "4px",
+                        "max-width": "1200px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "auto",
+                        "base": "8px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        
+        /* Custom organic curve for the left panel separation */
+        .organic-curve {
+            position: absolute;
+            right: -100px;
+            top: 0;
+            height: 100%;
+            width: 250px;
+            background-color: #2d5a46;
+            border-radius: 0 50% 50% 0;
+            z-index: 10;
+        }
+
+        @media (max-width: 768px) {
+            .organic-curve {
+                display: none;
+            }
+        }
+        
+        .transition-auth {
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
+        }
+
+        .auth-hidden {
+            display: none;
+            opacity: 0;
+        }
+
+        .auth-visible {
+            display: block;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md overflow-x-hidden min-h-screen flex flex-col">
+<main class="flex flex-col md:flex-row flex-grow">
+<!-- Left Panel (Branding & Welcome) -->
+<section class="w-full md:w-[50%] bg-primary text-on-primary flex flex-col items-center justify-center p-lg relative overflow-visible z-20 min-h-[400px] md:min-h-screen">
+<!-- Organic shape separator -->
+<div class="organic-curve"></div>
+<div class="max-w-md w-full flex flex-col items-center text-center relative z-30">
+<!-- Branding -->
+<div class="mb-lg">
+<div class="w-24 h-24 bg-white rounded-full flex items-center justify-center overflow-hidden p-3 shadow-md mb-4 mx-auto">
+<img alt="Smartsach White Logo" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSXzdK1Y0U25femz4FceW4dcn4EEus8_VmUopdkAn62o0QjClHqHNLAXMRnWJPCk06SHFC_Buo0ZPiuy2hPGB-CHcm5epb-t3CqyOdFCw_uMPeqiMF8lwVBqUG9C1ERsCMhDKHfhFgzorFB_PauVxI63nxrWZaXk9kpQ7EdeeE7NLShdopxlL2Nuqs_y2e4heZPRTKyFCV8gTz1ivQXXisMwmmSw5JQ1r8ET9tnOda80kiaPvhantjm4T1N21EM1kzRzLzK_vpvm8"/>
+</div>
+<h1 class="text-3xl font-bold tracking-tight">Smartsach</h1>
+</div>
+<!-- Text Content -->
+<h2 class="text-4xl font-bold mb-md">Bienvenidos panameños</h2>
+<p class="text-body-md opacity-90 leading-relaxed mb-lg max-w-sm mx-auto">
+                Nuestra pagina web, donde encontraras informacion valiosa, como agendas y rutas de recoleccion.
+            </p>
+<!-- Action Toggle -->
+<button class="border-2 border-white/60 hover:border-white text-white px-xl py-2 rounded-full font-label-md transition-all hover:bg-white/10 active:scale-95" onclick="location.reload()">
+                Ingresar
+            </button>
+<!-- Bottom Links -->
+<nav class="mt-xl flex items-center gap-base text-white/70 text-sm font-medium">
+<a class="hover:text-white transition-colors" href="#">Nosotros</a>
+<span class="opacity-30">|</span>
+<a class="hover:text-white transition-colors" href="#">Ayuda</a>
+</nav>
+</div>
+</section>
+<!-- Right Panel (Forms) -->
+<section class="w-full md:w-[50%] flex flex-col items-center justify-center p-lg bg-white relative z-10">
+<div class="w-full max-w-[400px] flex flex-col items-center">
+<!-- Center Logo -->
+<div class="mb-10 w-full flex justify-center">
+<img alt="smartSACH Logo" class="h-16 md:h-20 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEyFjWknnizd612_uBEc-h8DbkWzMAM0nNU1rgJOYVXuoui8h1AApLST-ModXuX7iuTZh4z-5XVtPBQe9I7Wt6o5Dv_stmPWZaofVzM9DRHCx5OUxgzRikurRlzCW_NKLnbDvuZ0uYTfNCfxeEf26UHdMJDauIUtiu591iYMxVdtF9hz-S9rWBxsPBk4dGy2cveq_x-sAj9G8SU213IU2tpjVjBgFQv5WkPXOreBNurEKhRbIlEAbEG5pKNvlZzTnsSWedNQChdts"/>
+</div>
+<!-- Login Container -->
+<div class="auth-visible w-full text-center" id="login-container">
+<p class="text-on-surface-variant font-body-md mb-10">Inicie sesión para ser miembro de la plataforma</p>
+<form class="space-y-6" onsubmit="event.preventDefault()">
+<div>
+<input class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-4 px-8 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Correo electronico" type="email"/>
+</div>
+<div>
+<input class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-4 px-8 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Contraseña" type="password"/>
+</div>
+<div>
+<a class="text-on-surface-variant/70 text-sm hover:text-primary transition-colors" href="#">olvidaste tu contraseña?</a>
+</div>
+<button class="w-full bg-[#1e4638] py-3 rounded-full text-white font-label-md hover:bg-primary transition-all shadow-lg active:scale-95 mt-4">
+                        Ingresar
+                    </button>
+</form>
+<div class="mt-10 text-sm">
+<span class="text-on-surface-variant">No tienes cuenta?</span>
+<button class="text-[#00c46a] font-bold ml-1 hover:underline" onclick="toggleAuth(false)">Crear cuenta</button>
+</div>
+</div>
+<!-- Registration Form (Hidden by default) -->
+<div class="auth-hidden w-full" id="register-container">
+<div class="mb-md text-center">
+<button class="flex items-center gap-xs text-on-surface-variant hover:text-primary mb-md font-label-md mx-auto" onclick="toggleAuth(true)">
+<span class="material-symbols-outlined text-[18px]">arrow_back</span> Volver
+                    </button>
+<h3 class="text-2xl font-bold text-primary mb-1">Crear cuenta</h3>
+</div>
+<form class="space-y-4" onsubmit="event.preventDefault()">
+<input class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Nombre Completo" type="text"/>
+<input class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Correo electrónico" type="email"/>
+<input class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña" type="password"/>
+<button class="w-full bg-secondary py-3 rounded-full text-white font-label-md hover:brightness-110 shadow-md transition-all mt-4">
+                        Registrarse
+                    </button>
+</form>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer Component -->
+<footer class="bg-tertiary text-on-tertiary relative z-30">
+<div class="max-w-max-width mx-auto px-margin-mobile md:px-lg py-lg grid grid-cols-1 md:grid-cols-3 gap-md items-center">
+<div class="flex flex-col items-center md:items-start">
+<div class="flex items-center gap-sm mb-1">
+<img alt="smartSACH Logo" class="h-8 w-auto object-contain brightness-0 invert" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEyFjWknnizd612_uBEc-h8DbkWzMAM0nNU1rgJOYVXuoui8h1AApLST-ModXuX7iuTZh4z-5XVtPBQe9I7Wt6o5Dv_stmPWZaofVzM9DRHCx5OUxgzRikurRlzCW_NKLnbDvuZ0uYTfNCfxeEf26UHdMJDauIUtiu591iYMxVdtF9hz-S9rWBxsPBk4dGy2cveq_x-sAj9G8SU213IU2tpjVjBgFQv5WkPXOreBNurEKhRbIlEAbEG5pKNvlZzTnsSWedNQChdts"/>
+<span class="font-bold text-lg text-white">smartSACH</span>
+</div>
+<p class="text-xs opacity-70">Excelencia en servicios ambientales</p>
+</div>
+<div class="flex justify-center gap-md">
+<a class="text-xs opacity-70 hover:opacity-100 transition-opacity" href="#">Contactanos</a>
+<a class="text-xs opacity-70 hover:opacity-100 transition-opacity" href="#">Términos y Condiciones</a>
+<a class="text-xs opacity-70 hover:opacity-100 transition-opacity" href="#">Política de Privacidad</a>
+</div>
+<div class="flex justify-center md:justify-end">
+<p class="text-[10px] md:text-xs opacity-50 text-center md:text-right">
+                © 2024 smartSACH Servicios Ambientales de Chiriquí. Todos los derechos reservados.
+            </p>
+</div>
+</div>
+</footer>
+<script>
+    function toggleAuth(showLogin) {
+        const login = document.getElementById('login-container');
+        const register = document.getElementById('register-container');
+        
+        if (showLogin) {
+            register.classList.replace('auth-visible', 'auth-hidden');
+            login.classList.replace('auth-hidden', 'auth-visible');
+        } else {
+            login.classList.replace('auth-visible', 'auth-hidden');
+            register.classList.replace('auth-hidden', 'auth-visible');
+        }
+    }
+</script>
+</body></html>
