@@ -1,4 +1,6 @@
 <?php
+// Definir la raíz absoluta del proyecto para inclusiones seguras
+define('ROOT_PATH', realpath(__DIR__ . '/..'));
 /**
  * Front Controller de Smartsach.
  * Delega el enrutamiento y la lógica de backend al router.

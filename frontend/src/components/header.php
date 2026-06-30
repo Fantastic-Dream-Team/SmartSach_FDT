@@ -9,7 +9,7 @@ if (substr($base, -1) !== '/') {
 $notifReportesCount = 0;
 $notifRepliesCount = 0;
 if (isset($_SESSION['user_id']) && $_SESSION['user_rol'] === 'cliente') {
-    require_once __DIR__ . '/../../../backend/src/models/Reporte.php';
+    require_once ROOT_PATH . '/backend/src/models/Reporte.php';
     $headerReporteModel = new Reporte();
     $notifReportesCount = $headerReporteModel->getReportesCountByUsuario($_SESSION['user_id']);
     $notifRepliesCount = $headerReporteModel->getUnreadRepliesCount($_SESSION['user_id']);
