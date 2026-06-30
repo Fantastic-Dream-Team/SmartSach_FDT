@@ -59,6 +59,9 @@ class DashboardController {
         
         // Obtener noticias de reciclaje y anuncios
         $noticias = $this->noticiaModel->getAllNoticias();
+        if (!is_array($noticias)) {
+            $noticias = [];
+        }
 
         // Renderizar la vista
         require_once __DIR__ . '/../../../frontend/src/pages/dashboard.php';
