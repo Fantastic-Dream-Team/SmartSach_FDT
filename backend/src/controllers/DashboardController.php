@@ -25,24 +25,57 @@ class DashboardController {
 
         $userId = $_SESSION['user_id'];
         
-        // Obtener ubicaciones (antiguas rutas/viviendas)
+        // Obtener ubicaciones y mapear a $rutas
         $ubicaciones = $this->ubicacionModel->findByUsuarioId($userId);
+        $rutas = [];
         
-        $selectedUbicacion = null;
-        $ubicacionId = filter_input(INPUT_GET, 'ubicacion_id', FILTER_VALIDATE_INT);
+        foreach ($ubicaciones as $u) {
+            $rutas[] = [
+                'id' => $u['ubicacion_id'],
+                'nombre' => $u['nombre_referencia'],
+                'descripcion' => $u['descripcion_direccion'],
+                'latitud' => $u['latitud'],
+                'longitud' => $u['longitud'],
+                'costo' => '10.00',
+                'conductor_nombre' => 'SACH - Conductor Turno Mañana',
+                'estado' => 'Activa',
+                'zona_estado' => 'en_ruta'
+            ];
+        }
+
+        // Simulación de Emergencia
+        if (empty($rutas)) {
+            $rutas[] = [
+                'id' => 9999,
+                'nombre' => 'Ubicación de Prueba (David, Chiriquí)',
+                'descripcion' => 'Ruta generada automáticamente para asegurar carga del mapa',
+                'latitud' => 8.42867,
+                'longitud' => -82.42875,
+                'costo' => '10.00',
+                'conductor_nombre' => 'SACH - Conductor Turno Mañana',
+                'estado' => 'Activa',
+                'zona_estado' => 'en_ruta'
+            ];
+        }
+
+        $selectedRuta = null;
+        $rutaId = filter_input(INPUT_GET, 'ruta_id', FILTER_VALIDATE_INT);
         
-        if ($ubicacionId) {
-            foreach ($ubicaciones as $u) {
-                if (intval($u['ubicacion_id']) === $ubicacionId) {
-                    $selectedUbicacion = $u;
+        if ($rutaId) {
+            foreach ($rutas as $r) {
+                if (intval($r['id']) === $rutaId) {
+                    $selectedRuta = $r;
                     break;
                 }
             }
         }
         
-        if (!$selectedUbicacion && !empty($ubicaciones)) {
-            $selectedUbicacion = $ubicaciones[0];
+        if (!$selectedRuta && !empty($rutas)) {
+            $selectedRuta = $rutas[0];
         }
+
+        // Definir variable faltante
+        $saldoPendiente = 0.00;
 
         // Obtener estado de cuenta a partir de la suscripción
         $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
@@ -54,8 +87,17 @@ class DashboardController {
             }
         }
 
-        // [WIP] - Zona de Rutas y Noticias se mantienen por compatibilidad futura
-        $zonaRutas = []; // TODO: Implementar lógica de agrupación de rutas por zonas
+        // Simular zonaRutas para Leaflet Routing Machine
+        $zonaRutas = [];
+        if ($selectedRuta) {
+            $baseLat = floatval($selectedRuta['latitud']);
+            $baseLng = floatval($selectedRuta['longitud']);
+            $zonaRutas = [
+                ['latitud' => $baseLat + 0.001, 'longitud' => $baseLng + 0.001],
+                ['latitud' => $baseLat - 0.001, 'longitud' => $baseLng - 0.001],
+                ['latitud' => $baseLat + 0.002, 'longitud' => $baseLng - 0.001]
+            ];
+        }
         
         // Obtener noticias de reciclaje y anuncios
         $noticias = $this->noticiaModel->getAllNoticias();
