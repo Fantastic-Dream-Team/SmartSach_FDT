@@ -54,8 +54,11 @@ if (substr($base, -1) !== '/') {
 }
 
 // Obtener contadores
-$reporteModelHelper = new ReporteIncidencia();
-$totalReportes = count($reporteModelHelper->findByUsuarioId($user['usuario_id']));
+// Se comenta la conexión real a BD para pruebas de UI
+// $reporteModelHelper = new ReporteIncidencia();
+// $totalReportes = count($reporteModelHelper->findByUsuarioId($user['usuario_id']));
+$totalReportes = 2; // Mock data temporal
+
 $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avatar por defecto
 ?>
 
