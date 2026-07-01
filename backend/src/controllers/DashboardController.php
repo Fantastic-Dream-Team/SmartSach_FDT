@@ -43,21 +43,6 @@ class DashboardController {
             ];
         }
 
-        // Simulación de Emergencia
-        if (empty($rutas)) {
-            $rutas[] = [
-                'id' => 9999,
-                'nombre' => 'Ubicación de Prueba (David, Chiriquí)',
-                'descripcion' => 'Ruta generada automáticamente para asegurar carga del mapa',
-                'latitud' => 8.42867,
-                'longitud' => -82.42875,
-                'costo' => '10.00',
-                'conductor_nombre' => 'SACH - Conductor Turno Mañana',
-                'estado' => 'Activa',
-                'zona_estado' => 'en_ruta'
-            ];
-        }
-
         $selectedRuta = null;
         $rutaId = filter_input(INPUT_GET, 'ruta_id', FILTER_VALIDATE_INT);
         
@@ -74,16 +59,18 @@ class DashboardController {
             $selectedRuta = $rutas[0];
         }
 
-        // Definir variable faltante
+        // Definir variables predeterminadas para evitar warnings
         $saldoPendiente = 0.00;
-
-        // Obtener estado de cuenta a partir de la suscripción
-        $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
         $estadoCuenta = 'Paz y Salvo';
-        foreach ($suscripciones as $sub) {
-            if ($sub['estado_pago'] === 'moroso') {
-                $estadoCuenta = 'Moroso';
-                break;
+
+        // Obtener estado de cuenta a partir de la suscripción si existe
+        $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
+        if ($suscripciones) {
+            foreach ($suscripciones as $sub) {
+                if ($sub['estado_pago'] === 'moroso') {
+                    $estadoCuenta = 'Moroso';
+                    break;
+                }
             }
         }
 
