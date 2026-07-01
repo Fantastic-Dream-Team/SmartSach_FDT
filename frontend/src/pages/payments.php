@@ -14,34 +14,91 @@ if (substr($base, -1) !== '/') {
         <p class="text-on-surface-variant text-sm mt-1">Consulte sus recibos anteriores y realice el pago de sus mensualidades acumuladas.</p>
     </div>
 
+    <!-- Banner de Mora si aplica -->
+    <?php if ($saldoPendiente > 0): ?>
+        <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-r-lg flex items-center gap-3">
+            <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
+            <div>
+                <strong class="font-bold">Cuenta en Mora:</strong> 
+                <span>Tiene un saldo pendiente de $<?= number_format($saldoPendiente, 2) ?>. Realice el pago para evitar suspensión del servicio.</span>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <!-- Nueva Estructura: 2 Tarjetas Superiores Lado a Lado -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <!-- Tarjeta Próximo Pago -->
+        <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm flex flex-col justify-between">
+            <div>
+                <span class="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider block">Próximo Pago</span>
+                <span class="text-3xl font-black text-primary mt-2 block">$10.00</span>
+                <span class="text-xs text-on-surface-variant block mt-1">Vence: 22/08/2026</span>
+            </div>
+            <div class="mt-4">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
+                    Pendiente
+                </span>
+            </div>
+        </div>
+
+        <!-- Tarjeta Estado de Cuenta -->
+        <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm flex flex-col justify-between">
+            <div>
+                <span class="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider block">Estado de Cuenta</span>
+                <span class="text-2xl font-black mt-2 block <?= $saldoPendiente > 0 ? 'text-red-600' : 'text-[#00c46a]' ?>">
+                    <?= $saldoPendiente > 0 ? 'Moroso' : 'Al Día' ?>
+                </span>
+                <span class="text-xs text-on-surface-variant block mt-1">Último Pago: 22/05/2026</span>
+            </div>
+            <div class="mt-4">
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold <?= $saldoPendiente > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' ?>">
+                    <?= $saldoPendiente > 0 ? 'Mora' : 'Activo' ?>
+                </span>
+            </div>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Panel Izquierdo / Resumen de Estado Financiero -->
+        <!-- Columna Izquierda: Selección de Método de Pago -->
         <div class="lg:col-span-1 space-y-6">
-            <!-- Tarjeta de Saldo -->
-            <div class="bg-white p-6 rounded-lg border border-surface-container-high shadow-sm">
-                <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Total a Pagar</span>
-                <h3 class="text-4xl font-black text-primary mt-2">$<?= number_format($saldoPendiente, 2) ?></h3>
+            <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm">
+                <h3 class="text-base font-bold text-primary mb-4">Selecciona tu método de pago</h3>
                 
-                <div class="mt-4 pt-4 border-t border-surface-container space-y-2">
-                    <div class="flex justify-between text-xs text-on-surface-variant">
-                        <span>Estado de Cuenta:</span>
-                        <span class="font-bold <?= ($saldoPendiente > 0) ? 'text-red-600' : 'text-[#00c46a]' ?>">
-                            <?= ($saldoPendiente > 0) ? 'Moroso' : 'Paz y Salvo' ?>
+                <!-- Métodos de Pago Interactivos -->
+                <div class="space-y-3" id="payment-methods">
+                    <button type="button" onclick="selectMethod('tarjeta')" id="method-tarjeta" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
+                        <span class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary">credit_card</span>
+                            Tarjeta de Crédito / Débito
                         </span>
-                    </div>
-                    <div class="flex justify-between text-xs text-on-surface-variant">
-                        <span>Próximo vencimiento:</span>
-                        <span class="font-bold">5 de <?= date('F, Y', strtotime('+1 month')) ?></span>
-                    </div>
+                        <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-tarjeta"></span>
+                    </button>
+                    
+                    <button type="button" onclick="selectMethod('paypal')" id="method-paypal" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
+                        <span class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+                            PayPal
+                        </span>
+                        <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-paypal"></span>
+                    </button>
+
+                    <button type="button" onclick="selectMethod('ach')" id="method-ach" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
+                        <span class="flex items-center gap-3">
+                            <span class="material-symbols-outlined text-primary">account_balance</span>
+                            Banco Local (ACH)
+                        </span>
+                        <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-ach"></span>
+                    </button>
                 </div>
 
                 <!-- Botón de Pago Simulado -->
                 <?php if ($saldoPendiente > 0 && isset($suscripcionMorosa)): ?>
-                    <form action="<?= $base ?>payments" method="POST" class="mt-6">
+                    <form action="<?= $base ?>payments" method="POST" id="simulated-payment-form" onsubmit="return confirmPayment(event)" class="mt-6">
                         <input type="hidden" name="suscripcion_id" value="<?= htmlspecialchars($suscripcionMorosa) ?>">
+                        <input type="hidden" name="metodo_pago" id="selected-method-val" value="">
                         <button type="submit" class="w-full bg-secondary hover:bg-[#00ab5d] text-white py-3 rounded-full font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined">payments</span>
-                            Simular Pago Exitoso
+                            Pagar Ahora
                         </button>
                     </form>
                 <?php else: ?>
@@ -52,80 +109,149 @@ if (substr($base, -1) !== '/') {
                 <?php endif; ?>
             </div>
 
-            <!-- Información Adicional -->
-            <div class="bg-[#163a6c] text-white p-6 rounded-lg shadow-sm">
-                <h4 class="font-bold text-base mb-2 flex items-center gap-2">
+            <!-- Informante -->
+            <div class="bg-[#163a6c] text-white p-5 rounded-xl shadow-sm">
+                <h4 class="font-bold text-sm mb-2 flex items-center gap-2">
                     <span class="material-symbols-outlined">info</span> Informante de Cobro
                 </h4>
-                <p class="text-xs opacity-90 leading-relaxed">
-                    Las tarifas de smartSACH se calculan en base a la ubicación y dificultad de acceso de las viviendas registradas. El cargo mensual se genera de manera automática los primeros días de cada mes.
+                <p class="text-[11px] opacity-90 leading-relaxed">
+                    Las tarifas se calculan automáticamente según la zona y nivel de acceso de sus propiedades registradas. El cobro se realiza los primeros días de cada mes.
                 </p>
             </div>
         </div>
 
-        <!-- Tabla / Cronología de Pagos -->
+        <!-- Historial de Facturas -->
         <div class="lg:col-span-2">
-            <div class="bg-white p-6 rounded-lg border border-surface-container-high shadow-sm">
+            <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm">
                 <h3 class="text-xl font-bold text-primary mb-6 flex items-center gap-2">
-                    <span class="material-symbols-outlined">receipt_long</span>
+                    <span class="material-symbols-outlined text-primary">receipt_long</span>
                     Historial de Facturas
                 </h3>
 
-                <?php if (empty($historial)): ?>
-                    <div class="text-center py-12">
-                        <span class="material-symbols-outlined text-4xl text-on-surface-variant/40">credit_card_off</span>
-                        <p class="text-on-surface-variant text-sm mt-2">No se encontraron transacciones registradas.</p>
-                    </div>
-                <?php else: ?>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-sm">
-                            <thead>
-                                <tr class="border-b border-surface-container text-on-surface-variant font-semibold">
-                                    <th class="pb-3 font-medium">Concepto/Fecha</th>
-                                    <th class="pb-3 font-medium text-center">Referencia</th>
-                                    <th class="pb-3 font-medium text-center">Estado</th>
-                                    <th class="pb-3 font-medium text-right">Monto</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($historial as $pago): ?>
-                                    <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
-                                        <td class="py-4">
-                                            <div class="font-semibold text-on-surface">Servicio Mensual smartSACH</div>
-                                            <div class="text-xs text-on-surface-variant mt-0.5">
-                                                Generado: <?= date('d/m/Y', strtotime($pago['created_at'])) ?>
-                                                <?php if ($pago['fecha_pago']): ?>
-                                                    | Pagado: <?= date('d/m/Y H:i', strtotime($pago['fecha_pago'])) ?>
-                                                <?php endif; ?>
-                                            </div>
-                                        </td>
-                                        <td class="py-4 text-center font-mono text-xs text-on-surface-variant">
-                                            <?= $pago['referencia'] ?: '-' ?>
-                                        </td>
-                                        <td class="py-4 text-center">
-                                            <?php if ($pago['estado'] === 'Pagado'): ?>
-                                                <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
-                                                    Pagado
-                                                </span>
-                                            <?php else: ?>
-                                                <span class="inline-block bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full">
-                                                    Pendiente
-                                                </span>
-                                            <?php endif; ?>
-                                        </td>
-                                        <td class="py-4 text-right font-bold text-on-surface">
-                                            $<?= number_format($pago['monto'], 2) ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                <?php endif; ?>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-surface-container text-on-surface-variant font-semibold">
+                                <th class="pb-3 font-medium">Factura / Concepto</th>
+                                <th class="pb-3 font-medium text-center">Referencia</th>
+                                <th class="pb-3 font-medium text-center">Estado</th>
+                                <th class="pb-3 font-medium text-right">Monto</th>
+                                <th class="pb-3 font-medium text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Mock Row 1 -->
+                            <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                <td class="py-4">
+                                    <div class="font-semibold text-on-surface">FCT-2026-001 (Servicio smartSACH)</div>
+                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/03/2026</div>
+                                </td>
+                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92837</td>
+                                <td class="py-4 text-center">
+                                    <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
+                                        Pagado
+                                    </span>
+                                </td>
+                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
+                                <td class="py-4 text-right">
+                                    <a href="#" onclick="alert('Descargando factura FCT-2026-001 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">download</span> PDF
+                                    </a>
+                                </td>
+                            </tr>
+                            
+                            <!-- Mock Row 2 -->
+                            <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                <td class="py-4">
+                                    <div class="font-semibold text-on-surface">FCT-2026-002 (Servicio smartSACH)</div>
+                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/04/2026</div>
+                                </td>
+                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92838</td>
+                                <td class="py-4 text-center">
+                                    <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
+                                        Pagado
+                                    </span>
+                                </td>
+                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
+                                <td class="py-4 text-right">
+                                    <a href="#" onclick="alert('Descargando factura FCT-2026-002 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-sm">download</span> PDF
+                                    </a>
+                                </td>
+                            </tr>
+
+                            <!-- Row Variable según estado del backend -->
+                            <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                <td class="py-4">
+                                    <div class="font-semibold text-on-surface">FCT-2026-003 (Servicio smartSACH)</div>
+                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/05/2026</div>
+                                </td>
+                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92839</td>
+                                <td class="py-4 text-center">
+                                    <span class="inline-block <?= $saldoPendiente > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#00c46a]' ?> text-xs font-bold px-3 py-1 rounded-full">
+                                        <?= $saldoPendiente > 0 ? 'Pendiente' : 'Pagado' ?>
+                                    </span>
+                                </td>
+                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
+                                <td class="py-4 text-right">
+                                    <?php if ($saldoPendiente > 0): ?>
+                                        <span class="text-on-surface-variant/40 text-xs">No disponible</span>
+                                    <?php else: ?>
+                                        <a href="#" onclick="alert('Descargando factura FCT-2026-003 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-sm">download</span> PDF
+                                        </a>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    let selectedMethod = '';
+
+    function selectMethod(method) {
+        selectedMethod = method;
+        document.getElementById('selected-method-val').value = method;
+
+        // Reset borders
+        document.querySelectorAll('#payment-methods button').forEach(btn => {
+            btn.classList.remove('border-primary', 'bg-primary/5');
+            btn.classList.add('border-surface-container');
+        });
+        
+        // Reset radio dots
+        document.querySelectorAll('#payment-methods button span[id^="radio-"]').forEach(dot => {
+            dot.innerHTML = '';
+        });
+
+        // Set selected
+        const activeBtn = document.getElementById('method-' + method);
+        activeBtn.classList.remove('border-surface-container');
+        activeBtn.classList.add('border-primary', 'bg-primary/5');
+
+        const activeDot = document.getElementById('radio-' + method);
+        activeDot.innerHTML = '<span class="w-2.5 h-2.5 bg-primary rounded-full inline-block"></span>';
+    }
+
+    function confirmPayment(e) {
+        if (!selectedMethod) {
+            alert('Por favor, selecciona un método de pago antes de continuar.');
+            return false;
+        }
+        
+        let methodStr = '';
+        if (selectedMethod === 'tarjeta') methodStr = 'Tarjeta de Crédito/Débito';
+        if (selectedMethod === 'paypal') methodStr = 'PayPal';
+        if (selectedMethod === 'ach') methodStr = 'ACH / Banco Local';
+
+        return confirm(`¿Confirmar simulación de pago de $10.00 usando ${methodStr}?`);
+    }
+</script>
 
 <?php
 require_once __DIR__ . '/../components/footer.php';

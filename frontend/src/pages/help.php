@@ -94,42 +94,73 @@ if (substr($base, -1) !== '/') {
 
             <!-- Listado Público / Historial de Reportes -->
             <div class="bg-white p-6 rounded-lg border border-surface-container-high shadow-sm">
-                <h3 class="text-xl font-bold text-primary mb-4 flex items-center gap-2">
+                <h3 class="text-xl font-bold text-primary mb-6 flex items-center gap-2">
                     <span class="material-symbols-outlined text-primary">history</span>
                     Mis Reportes
                 </h3>
 
-                <?php if (empty($reportes)): ?>
-                    <p class="text-on-surface-variant text-sm py-4">No tiene reportes registrados.</p>
-                <?php else: ?>
-                    <div class="space-y-6">
-                        <?php foreach ($reportes as $rep): ?>
-                            <!-- Tarjeta de Reporte -->
-                            <div class="bg-surface-container/20 p-5 rounded-xl border border-surface-container flex flex-col gap-4">
-                                <div class="flex justify-between items-start gap-4">
-                                    <div class="flex items-center gap-3">
-                                        <div>
-                                            <span class="block text-sm font-bold text-on-surface">Tipo: <?= htmlspecialchars(ucwords(str_replace('_', ' ', $rep['tipo_incidencia']))) ?></span>
-                                            <span class="text-[10px] text-on-surface-variant/80">Fecha: <?= date('d/m/Y H:i', strtotime($rep['fecha_reporte'])) ?></span>
-                                        </div>
-                                    </div>
-                                    <div class="text-right">
-                                        <span class="inline-block px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase 
-                                            <?= ($rep['estado_reporte'] === 'resuelto') ? 'bg-green-100 text-[#00c46a]' : (($rep['estado_reporte'] === 'en_proceso') ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600') ?>">
-                                            <?= htmlspecialchars($rep['estado_reporte']) ?>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="border-b border-surface-container text-on-surface-variant font-semibold">
+                                <th class="pb-3 font-medium">ID</th>
+                                <th class="pb-3 font-medium">Fecha</th>
+                                <th class="pb-3 font-medium">Tipo Incidencia</th>
+                                <th class="pb-3 font-medium">Ubicación</th>
+                                <th class="pb-3 font-medium text-center">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($reportes)): ?>
+                                <!-- Mock Row 1 -->
+                                <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                    <td class="py-4 font-bold text-on-surface">REP-1029</td>
+                                    <td class="py-4 text-on-surface-variant">15/05/2026</td>
+                                    <td class="py-4 text-on-surface">El camión no pasó</td>
+                                    <td class="py-4 text-primary font-semibold">Casa principal (David Este)</td>
+                                    <td class="py-4 text-center">
+                                        <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
+                                            Resuelto
                                         </span>
-                                    </div>
-                                </div>
-
-                                <!-- Detalles del problema -->
-                                <div>
-                                    <div class="text-xs text-primary font-semibold mb-1">Ubicación Afectada: <?= htmlspecialchars($rep['nombre_referencia']) ?></div>
-                                    <p class="text-sm text-on-surface-variant leading-relaxed"><?= htmlspecialchars($rep['descripcion']) ?></p>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <!-- Mock Row 2 -->
+                                <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                    <td class="py-4 font-bold text-on-surface">REP-1042</td>
+                                    <td class="py-4 text-on-surface-variant">28/05/2026</td>
+                                    <td class="py-4 text-on-surface">Desperdicios dejados en vía</td>
+                                    <td class="py-4 text-primary font-semibold">Casa principal (David Este)</td>
+                                    <td class="py-4 text-center">
+                                        <span class="inline-block bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
+                                            En Proceso
+                                        </span>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($reportes as $rep): ?>
+                                    <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
+                                        <td class="py-4 font-bold text-on-surface">REP-<?= str_pad($rep['reporte_id'], 4, '0', STR_PAD_LEFT) ?></td>
+                                        <td class="py-4 text-on-surface-variant"><?= date('d/m/Y', strtotime($rep['fecha_reporte'])) ?></td>
+                                        <td class="py-4 text-on-surface"><?= htmlspecialchars(ucwords(str_replace('_', ' ', $rep['tipo_incidencia']))) ?></td>
+                                        <td class="py-4 text-primary font-semibold"><?= htmlspecialchars($rep['nombre_referencia']) ?></td>
+                                        <td class="py-4 text-center">
+                                            <?php 
+                                            $estado = strtolower($rep['estado_reporte']);
+                                            if ($estado === 'resuelto') {
+                                                echo '<span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">Resuelto</span>';
+                                            } elseif ($estado === 'en_proceso') {
+                                                echo '<span class="inline-block bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">En Proceso</span>';
+                                            } else {
+                                                echo '<span class="inline-block bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full">Abierto</span>';
+                                            }
+                                            ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
