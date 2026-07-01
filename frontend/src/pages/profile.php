@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../components/header.php';
-require_once __DIR__ . '/../models/ReporteIncidencia.php';
+require_once __DIR__ . '/../../../backend/src/models/ReporteIncidencia.php';
 
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
