@@ -1,21 +1,6 @@
 <?php
 require_once __DIR__ . '/../components/header.php';
 
-// --- INICIO MOCK DATA ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['metodo_pago'])) {
-    $_SESSION['success'] = "Pago simulado de $10.00 con " . htmlspecialchars($_POST['metodo_pago']) . " procesado exitosamente.";
-    header("Location: payments");
-    exit;
-}
-
-if (!isset($saldoPendiente)) {
-    $saldoPendiente = 10.00;
-}
-if (!isset($suscripcionMorosa)) {
-    $suscripcionMorosa = 123;
-}
-// --- FIN MOCK DATA ---
-
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {
@@ -30,12 +15,12 @@ if (substr($base, -1) !== '/') {
     </div>
 
     <!-- Banner de Mora si aplica -->
-    <?php if ($saldoPendiente > 0): ?>
+    <?php if (isset($tieneDeuda) && $tieneDeuda): ?>
         <div class="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-800 rounded-r-lg flex items-center gap-3">
             <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
             <div>
                 <strong class="font-bold">Cuenta en Mora:</strong> 
-                <span>Tiene un saldo pendiente de $<?= number_format($saldoPendiente, 2) ?>. Realice el pago para evitar suspensión del servicio.</span>
+                <span>Tiene un saldo pendiente de $15.00. Realice el pago para evitar suspensión del servicio.</span>
             </div>
         </div>
     <?php endif; ?>
@@ -46,8 +31,8 @@ if (substr($base, -1) !== '/') {
         <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm flex flex-col justify-between">
             <div>
                 <span class="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider block">Próximo Pago</span>
-                <span class="text-3xl font-black text-primary mt-2 block">$10.00</span>
-                <span class="text-xs text-on-surface-variant block mt-1">Vence: 22/08/2026</span>
+                <span class="text-3xl font-black text-primary mt-2 block">$15.00</span>
+                <span class="text-xs text-on-surface-variant block mt-1">Próximo corte</span>
             </div>
             <div class="mt-4">
                 <span class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
@@ -60,14 +45,14 @@ if (substr($base, -1) !== '/') {
         <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm flex flex-col justify-between">
             <div>
                 <span class="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider block">Estado de Cuenta</span>
-                <span class="text-2xl font-black mt-2 block <?= $saldoPendiente > 0 ? 'text-red-600' : 'text-[#00c46a]' ?>">
-                    <?= $saldoPendiente > 0 ? 'Moroso' : 'Al Día' ?>
+                <span class="text-2xl font-black mt-2 block <?= (isset($tieneDeuda) && $tieneDeuda) ? 'text-red-600' : 'text-[#00c46a]' ?>">
+                    <?= (isset($tieneDeuda) && $tieneDeuda) ? 'Moroso' : 'Al Día' ?>
                 </span>
-                <span class="text-xs text-on-surface-variant block mt-1">Último Pago: 22/05/2026</span>
+                <span class="text-xs text-on-surface-variant block mt-1">Suscripción SmartSACH</span>
             </div>
             <div class="mt-4">
-                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold <?= $saldoPendiente > 0 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' ?>">
-                    <?= $saldoPendiente > 0 ? 'Mora' : 'Activo' ?>
+                <span class="inline-block px-3 py-1 rounded-full text-xs font-bold <?= (isset($tieneDeuda) && $tieneDeuda) ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' ?>">
+                    <?= (isset($tieneDeuda) && $tieneDeuda) ? 'Mora' : 'Activo' ?>
                 </span>
             </div>
         </div>
@@ -106,8 +91,8 @@ if (substr($base, -1) !== '/') {
                     </button>
                 </div>
 
-                <!-- Botón de Pago Simulado -->
-                <?php if ($saldoPendiente > 0 && isset($suscripcionMorosa)): ?>
+                <!-- Botón de Pago -->
+                <?php if (isset($tieneDeuda) && $tieneDeuda && isset($suscripcionMorosa)): ?>
                     <form action="<?= $base ?>payments" method="POST" id="simulated-payment-form" onsubmit="return confirmPayment(event)" class="mt-6">
                         <input type="hidden" name="suscripcion_id" value="<?= htmlspecialchars($suscripcionMorosa) ?>">
                         <input type="hidden" name="metodo_pago" id="selected-method-val" value="">
@@ -203,13 +188,13 @@ if (substr($base, -1) !== '/') {
                                 </td>
                                 <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92839</td>
                                 <td class="py-4 text-center">
-                                    <span class="inline-block <?= $saldoPendiente > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#00c46a]' ?> text-xs font-bold px-3 py-1 rounded-full">
-                                        <?= $saldoPendiente > 0 ? 'Pendiente' : 'Pagado' ?>
+                                    <span class="inline-block <?= (isset($tieneDeuda) && $tieneDeuda) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#00c46a]' ?> text-xs font-bold px-3 py-1 rounded-full">
+                                        <?= (isset($tieneDeuda) && $tieneDeuda) ? 'Pendiente' : 'Pagado' ?>
                                     </span>
                                 </td>
-                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
+                                <td class="py-4 text-right font-bold text-on-surface">$15.00</td>
                                 <td class="py-4 text-right">
-                                    <?php if ($saldoPendiente > 0): ?>
+                                    <?php if (isset($tieneDeuda) && $tieneDeuda): ?>
                                         <span class="text-on-surface-variant/40 text-xs">No disponible</span>
                                     <?php else: ?>
                                         <a href="#" onclick="alert('Descargando factura FCT-2026-003 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
@@ -264,7 +249,7 @@ if (substr($base, -1) !== '/') {
         if (selectedMethod === 'paypal') methodStr = 'PayPal';
         if (selectedMethod === 'ach') methodStr = 'ACH / Banco Local';
 
-        return confirm(`¿Confirmar simulación de pago de $10.00 usando ${methodStr}?`);
+        return confirm(`¿Confirmar pago de $15.00 usando ${methodStr}?`);
     }
 </script>
 

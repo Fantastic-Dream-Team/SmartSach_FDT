@@ -1,40 +1,6 @@
 <?php
 require_once __DIR__ . '/../components/header.php';
 
-// --- INICIO MOCK DATA (Para pruebas de UI post-login) ---
-if (!isset($ubicaciones) || empty($ubicaciones)) {
-    $ubicaciones = [
-        [
-            'ubicacion_id' => 1,
-            'nombre_referencia' => 'Casa Principal (David Este)',
-            'descripcion_direccion' => 'Casa verde de dos pisos, frente al parque.',
-            'latitud' => 8.42867,
-            'longitud' => -82.42875,
-        ],
-        [
-            'ubicacion_id' => 2,
-            'nombre_referencia' => 'Oficina (Doleguita)',
-            'descripcion_direccion' => 'Edificio azul comercial',
-            'latitud' => 8.43500,
-            'longitud' => -82.43000,
-        ]
-    ];
-}
-if (!isset($selectedUbicacion) || empty($selectedUbicacion)) {
-    $reqId = $_GET['ubicacion_id'] ?? 1;
-    $selectedUbicacion = $ubicaciones[0];
-    foreach ($ubicaciones as $u) {
-        if ($u['ubicacion_id'] == $reqId) {
-            $selectedUbicacion = $u;
-            break;
-        }
-    }
-}
-if (!isset($estadoCuenta)) {
-    $estadoCuenta = 'Al Día';
-}
-// --- FIN MOCK DATA ---
-
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {
