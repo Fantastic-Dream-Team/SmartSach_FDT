@@ -24,6 +24,18 @@ class ProfileController {
         $userId = $_SESSION['user_id'];
         $user = $this->usuarioModel->findById($userId);
         
+        if (!$user) {
+            $user = [
+                'usuario_id' => $userId,
+                'nombre' => $_SESSION['user_nombre'] ?? 'Usuario',
+                'apellido' => 'Supabase',
+                'correo_electronico' => $_SESSION['user_email'] ?? 'correo@ejemplo.com',
+                'telefono' => '6000-0000',
+                'direccion' => 'David, Chiriquí',
+                'cedula' => '0-000-0000'
+            ];
+        }
+        
         // Antes era Rutas, ahora son Ubicaciones de Servicio
         $ubicaciones = $this->ubicacionModel->findByUsuarioId($userId);
 
