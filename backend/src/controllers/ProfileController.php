@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UbicacionServicio.php';
+require_once __DIR__ . '/../models/Suscripcion.php';
 // WIP: require_once __DIR__ . '/../models/Zona.php';
 
 class ProfileController {
@@ -119,6 +120,15 @@ class ProfileController {
                 $ubicacionId = $this->ubicacionModel->create($userId, $nombreReferencia, $descripcion, $latitud, $longitud);
                 if (!$ubicacionId) {
                     throw new Exception("Error al guardar la nueva dirección.");
+                }
+
+                // Activar suscripción si es la primera ubicación
+                $suscripcionModel = new Suscripcion();
+                $suscripciones = $suscripcionModel->findByUsuarioId($userId);
+                
+                if (empty($suscripciones)) {
+                    $suscripcionModel->create($userId, $ubicacionId, 1, 'moroso');
+                    $this->usuarioModel->updateVerificationStatus($userId, 'activo');
                 }
 
                 $_SESSION['success'] = "Ubicación de servicio registrada correctamente. La suscripción se procesará acorde a tu estado de verificación.";

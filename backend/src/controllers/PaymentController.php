@@ -60,7 +60,8 @@ class PaymentController {
                 // Llamar al procedimiento almacenado para procesar el pago
                 $db = Database::getConnection();
                 $monto = 15.00; // Monto por defecto
-                $metodo = 'simulacion_web';
+                $metodoStr = $_POST['metodo_pago'] ?? '';
+                $metodo = $metodoStr ? 'simulacion_' . strtolower($metodoStr) : 'simulacion_web';
                 
                 $sql = "CALL public.sp_procesar_pago_sach(:suscripcion_id, :monto, :metodo)";
                 $stmt = $db->prepare($sql);
