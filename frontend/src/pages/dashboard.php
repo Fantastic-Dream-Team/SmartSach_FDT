@@ -19,13 +19,13 @@ if (substr($base, -1) !== '/') {
         <!-- Selector de Rutas / Acordeón -->
         <div class="w-full lg:w-auto relative">
             <label for="route-selector" class="block text-xs font-semibold text-primary mb-1 uppercase">Mis Casas Registradas:</label>
-            <select id="route-selector" onchange="window.location.href='<?= $base ?>dashboard?ubicacion_id=' + this.value" class="bg-[#9bb2a8]/20 border-none rounded-full py-2.5 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none cursor-pointer font-semibold text-sm">
-                <?php if (empty($ubicaciones)): ?>
+            <select id="route-selector" onchange="window.location.href='<?= $base ?>dashboard?ruta_id=' + this.value" class="bg-[#9bb2a8]/20 border-none rounded-full py-2.5 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none cursor-pointer font-semibold text-sm">
+                <?php if (empty($rutas)): ?>
                     <option value="">Sin direcciones registradas</option>
                 <?php else: ?>
-                    <?php foreach ($ubicaciones as $u): ?>
-                        <option value="<?= $u['ubicacion_id'] ?>" <?= ($selectedUbicacion && intval($selectedUbicacion['ubicacion_id']) === intval($u['ubicacion_id'])) ? 'selected' : '' ?>>
-                            <?= htmlspecialchars($u['nombre_referencia']) ?>
+                    <?php foreach ($rutas as $r): ?>
+                        <option value="<?= $r['id'] ?>" <?= ($selectedRuta && intval($selectedRuta['id']) === intval($r['id'])) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($r['nombre']) ?>
                         </option>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -33,15 +33,15 @@ if (substr($base, -1) !== '/') {
         </div>
     </div>
 
-    <?php if (!$selectedUbicacion): ?>
+    <?php if (!$selectedRuta): ?>
         <!-- Alerta de que no hay rutas -->
         <div class="bg-amber-50 border border-amber-200 text-amber-800 p-6 rounded-lg text-center shadow-sm">
             <span class="material-symbols-outlined text-4xl text-amber-500 mb-2">home_pin</span>
             <h3 class="text-lg font-bold">Aún no has registrado ninguna dirección</h3>
-            <p class="text-sm opacity-90 mt-1 mb-4">Para ver el mapa de recolección, primero registra tu casa en tu perfil.</p>
+            <p class="text-sm opacity-90 mt-1 mb-4">Para ver tu casa en el mapa de recolección, primero registra tu casa en tu perfil.</p>
             <a href="profile" class="bg-primary hover:bg-[#224f3c] text-white px-6 py-2.5 rounded-full font-bold shadow-md inline-block">Registrar mi primera casa</a>
         </div>
-    <?php else: ?>
+    <?php endif; ?>
         
         <!-- Estado de la ruta actual -->
         <?php 
@@ -78,24 +78,31 @@ if (substr($base, -1) !== '/') {
                         Detalle de la Dirección
                     </h3>
                     <div class="space-y-4">
+                        <?php if ($selectedRuta): ?>
                         <div>
                             <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Nombre:</span>
-                            <p class="text-base font-bold text-on-surface"><?= htmlspecialchars($selectedUbicacion['nombre_referencia']) ?></p>
+                            <p class="text-base font-bold text-on-surface"><?= htmlspecialchars($selectedRuta['nombre']) ?></p>
                         </div>
                         <div>
                             <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Descripción / Puntos de Referencia:</span>
-                            <p class="text-sm text-on-surface-variant"><?= htmlspecialchars($selectedUbicacion['descripcion_direccion'] ?: 'Sin descripción provista') ?></p>
+                            <p class="text-sm text-on-surface-variant"><?= htmlspecialchars($selectedRuta['descripcion'] ?: 'Sin descripción provista') ?></p>
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Conductor Asignado:</span>
-                                <p class="text-sm font-bold text-on-surface">SACH - Conductor Turno Mañana</p>
+                                <p class="text-sm font-bold text-on-surface"><?= htmlspecialchars($selectedRuta['conductor_nombre']) ?></p>
                             </div>
                             <div>
                                 <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Costo mensual:</span>
-                                <p class="text-sm font-bold text-primary">$10.00</p>
+                                <p class="text-sm font-bold text-primary">$<?= htmlspecialchars($selectedRuta['costo']) ?></p>
                             </div>
                         </div>
+                        <?php else: ?>
+                        <div class="py-6 text-center text-on-surface-variant">
+                            <span class="material-symbols-outlined text-3xl opacity-50 mb-2 block">location_off</span>
+                            No hay dirección seleccionada.
+                        </div>
+                        <?php endif; ?>
                     </div>
                 </div>
                 
@@ -186,17 +193,39 @@ if (substr($base, -1) !== '/') {
         <!-- Inicialización del Mapa de Leaflet.js con CartoDB Positron -->
         <script>
             document.addEventListener("DOMContentLoaded", function() {
-                var userLat = <?= $selectedUbicacion['latitud'] ?>;
-                var userLon = <?= $selectedUbicacion['longitud'] ?>;
+                var userLat = <?= $selectedRuta ? $selectedRuta['latitud'] : '8.42867' ?>;
+                var userLon = <?= $selectedRuta ? $selectedRuta['longitud'] : '-82.42875' ?>;
+                var hasLocation = <?= $selectedRuta ? 'true' : 'false' ?>;
 
-                // Inicializar mapa centrado en la casa del usuario
-                var map = L.map('map').setView([userLat, userLon], 16);
+                // Inicializar mapa centrado en la casa del usuario o en David
+                var map = L.map('map').setView([userLat, userLon], 14);
 
                 // CartoDB Positron: Tile layer muy limpio, gris claro
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                     maxZoom: 19,
                     attribution: '© OpenStreetMap contributors, © CartoDB'
                 }).addTo(map);
+
+                // Rutas Fijas (Polylines)
+                var rutaDavidCentro = [
+                    [8.43267, -82.43475],
+                    [8.42867, -82.42875],
+                    [8.42467, -82.42275]
+                ];
+                var rutaDavidEste = [
+                    [8.42467, -82.42275],
+                    [8.41967, -82.41575],
+                    [8.41067, -82.40875]
+                ];
+                var rutaAlgarrobos = [
+                    [8.44867, -82.42575],
+                    [8.45567, -82.42075],
+                    [8.46267, -82.41875]
+                ];
+
+                L.polyline(rutaDavidCentro, {color: '#2d5a46', weight: 4}).addTo(map).bindPopup("Ruta 1: David Centro");
+                L.polyline(rutaDavidEste, {color: '#006e2a', weight: 4}).addTo(map).bindPopup("Ruta 2: David Este");
+                L.polyline(rutaAlgarrobos, {color: '#163a6c', weight: 4}).addTo(map).bindPopup("Ruta 3: Algarrobos");
 
                 // Icono para la Casa del Usuario (SVG de Casa en verde)
                 var houseIcon = L.divIcon({
@@ -214,49 +243,61 @@ if (substr($base, -1) !== '/') {
                     iconAnchor: [20, 20]
                 });
 
-                // Marcador del usuario
-                var userMarker = L.marker([userLat, userLon], {icon: houseIcon}).addTo(map);
-                userMarker.bindPopup("<b>Mi Casa</b><br><?= htmlspecialchars($selectedUbicacion['nombre_referencia']) ?>").openPopup();
+                if (hasLocation) {
+                    // Marcador del usuario
+                    var userMarker = L.marker([userLat, userLon], {icon: houseIcon}).addTo(map);
+                    userMarker.bindPopup("<b>Mi Casa</b><br><?= $selectedRuta ? htmlspecialchars($selectedRuta['nombre']) : '' ?>").openPopup();
 
-                // Simulación de camión de recolección acercándose
-                var startLat = userLat + 0.003;
-                var startLon = userLon - 0.003;
-                var truckMarker = L.marker([startLat, startLon], {icon: truckIcon}).addTo(map);
-                truckMarker.bindPopup("<b>Camión smartSACH</b><br>En camino...").openPopup();
+                    // Simulación de camión de recolección acercándose a la casa del usuario
+                    var startLat = userLat + 0.003;
+                    var startLon = userLon - 0.003;
+                    var truckMarker = L.marker([startLat, startLon], {icon: truckIcon}).addTo(map);
+                    truckMarker.bindPopup("<b>Camión smartSACH</b><br>En camino...").openPopup();
 
-                var statusDot = document.getElementById('status-dot');
-                var statusText = document.getElementById('status-text');
-                var statusSubtext = document.getElementById('status-subtext');
+                    var statusDot = document.getElementById('status-dot');
+                    var statusText = document.getElementById('status-text');
+                    var statusSubtext = document.getElementById('status-subtext');
 
-                // Movimiento simulado hacia la casa en 10 pasos
-                var steps = 10;
-                var currentStep = 0;
-                var interval = setInterval(function() {
-                    if (currentStep > steps) {
-                        clearInterval(interval);
-                        statusDot.className = "w-3.5 h-3.5 bg-green-500 rounded-full inline-block animate-pulse";
-                        statusText.innerText = "¡Recolectando en su casa!";
-                        statusSubtext.innerText = "El camión está frente a su vivienda en este momento.";
-                        truckMarker.bindPopup("<b>Camión smartSACH</b><br>¡Aquí recolectando!").openPopup();
-                        return;
-                    }
+                    // Movimiento simulado hacia la casa en 10 pasos
+                    var steps = 10;
+                    var currentStep = 0;
+                    var interval = setInterval(function() {
+                        if (currentStep > steps) {
+                            clearInterval(interval);
+                            statusDot.className = "w-3.5 h-3.5 bg-green-500 rounded-full inline-block animate-pulse";
+                            statusText.innerText = "¡Recolectando en su casa!";
+                            statusSubtext.innerText = "El camión está frente a su vivienda en este momento.";
+                            truckMarker.bindPopup("<b>Camión smartSACH</b><br>¡Aquí recolectando!").openPopup();
+                            return;
+                        }
 
-                    var ratio = currentStep / steps;
-                    var curLat = startLat + (userLat - startLat) * ratio;
-                    var curLon = startLon + (userLon - startLon) * ratio;
-                    truckMarker.setLatLng([curLat, curLon]);
+                        var ratio = currentStep / steps;
+                        var curLat = startLat + (userLat - startLat) * ratio;
+                        var curLon = startLon + (userLon - startLon) * ratio;
+                        truckMarker.setLatLng([curLat, curLon]);
 
-                    var distanceM = Math.round((1 - ratio) * 450); // Simular metros
-                    if (distanceM > 0) {
-                        statusText.innerText = "Camión acercándose...";
-                        statusSubtext.innerText = "El camión está a aproximadamente " + distanceM + " metros de su casa.";
-                    }
+                        var distanceM = Math.round((1 - ratio) * 450); // Simular metros
+                        if (distanceM > 0) {
+                            statusText.innerText = "Camión acercándose...";
+                            statusSubtext.innerText = "El camión está a aproximadamente " + distanceM + " metros de su casa.";
+                        }
 
-                    currentStep++;
-                }, 3000);
+                        currentStep++;
+                    }, 3000);
+                } else {
+                    // Simulación de camión desplazándose en una ruta por defecto (David Centro)
+                    var truckMarker = L.marker(rutaDavidCentro[0], {icon: truckIcon}).addTo(map);
+                    truckMarker.bindPopup("<b>Camión smartSACH</b><br>En Ruta David Centro").openPopup();
+                    
+                    var statusDot = document.getElementById('status-dot');
+                    var statusText = document.getElementById('status-text');
+                    var statusSubtext = document.getElementById('status-subtext');
+                    
+                    statusText.innerText = "Monitoreando rutas...";
+                    statusSubtext.innerText = "Registre una dirección para rastrear su camión.";
+                }
             });
         </script>
-    <?php endif; ?>
 </div>
 
 <?php

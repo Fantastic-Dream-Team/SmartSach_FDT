@@ -56,7 +56,7 @@ if (substr($base, -1) !== '/') {
                     Reportar Incidencia
                 </h3>
                 
-                <form action="<?= $base ?>help" method="POST" class="space-y-4">
+                <form action="<?= $base ?>help?action=submit_report" method="POST" class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Ubicación Afectada:</label>

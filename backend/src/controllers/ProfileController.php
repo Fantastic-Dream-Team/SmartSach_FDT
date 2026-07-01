@@ -80,8 +80,8 @@ class ProfileController {
                 
                 header("Location: profile");
                 exit;
-            } catch (Exception $e) {
-                $_SESSION['error'] = $e->getMessage();
+            } catch (Throwable $e) {
+                $_SESSION['error'] = "Error al actualizar: " . $e->getMessage();
                 header("Location: profile");
                 exit;
             }
@@ -124,8 +124,8 @@ class ProfileController {
                 $_SESSION['success'] = "Ubicación de servicio registrada correctamente. La suscripción se procesará acorde a tu estado de verificación.";
                 header("Location: profile");
                 exit;
-            } catch (Exception $e) {
-                $_SESSION['error'] = $e->getMessage();
+            } catch (Throwable $e) {
+                $_SESSION['error'] = "Error al guardar ubicación: " . $e->getMessage();
                 header("Location: profile");
                 exit;
             }

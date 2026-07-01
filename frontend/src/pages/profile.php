@@ -1,6 +1,6 @@
 <?php
 require_once __DIR__ . '/../components/header.php';
-require_once __DIR__ . '/../models/ReporteIncidencia.php';
+require_once __DIR__ . '/../../../backend/src/models/ReporteIncidencia.php';
 
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
@@ -13,7 +13,19 @@ $reporteModelHelper = new ReporteIncidencia();
 $totalReportes = count($reporteModelHelper->findByUsuarioId($user['usuario_id']));
 
 $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avatar por defecto
+
+$supabaseUrl = getenv('SUPABASE_URL') ?: '';
+$supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
 ?>
+
+<script>
+    window.SUPABASE_URL = "<?= $supabaseUrl ?>";
+    window.SUPABASE_ANON_KEY = "<?= $supabaseAnonKey ?>";
+</script>
+<script type="module">
+    import { supabase } from '../services/supabaseClient.js';
+    window.supabase = supabase;
+</script>
 
 <div class="max-w-[1200px] mx-auto px-6 py-8">
     <div class="mb-8">
@@ -85,6 +97,16 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Apellido:</label>
                         <input name="apellido" id="edit-apellido" value="<?= htmlspecialchars($user['apellido'] ?? '') ?>" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
                         <p id="err-edit-apellido" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Correo Electrónico:</label>
+                        <input id="edit-email" type="email" value="<?= htmlspecialchars($user['correo_electronico'] ?? '') ?>" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                        <p id="err-edit-email" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Nueva Contraseña (Opcional):</label>
+                        <input id="edit-password" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                        <p id="err-edit-password" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Teléfono:</label>
@@ -231,12 +253,15 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
         }
     });
 
-    function validateProfileEdit(e) {
+    async function validateProfileEdit(e) {
+        e.preventDefault();
         clearProfileErrors();
         let hasError = false;
 
         const nombre = document.getElementById('edit-nombre').value.trim();
         const apellido = document.getElementById('edit-apellido').value.trim();
+        const email = document.getElementById('edit-email').value.trim();
+        const password = document.getElementById('edit-password').value;
         const telefono = document.getElementById('edit-telefono').value.trim();
         const direccion = document.getElementById('edit-direccion').value.trim();
 
@@ -250,6 +275,11 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
             document.getElementById('err-edit-apellido').classList.remove('hidden');
             hasError = true;
         }
+        if (!email) {
+            document.getElementById('err-edit-email').textContent = 'El correo electrónico es obligatorio.';
+            document.getElementById('err-edit-email').classList.remove('hidden');
+            hasError = true;
+        }
         
         const telRegex = /^\d{4}-\d{4}$/;
         if (telefono && !telRegex.test(telefono)) {
@@ -259,11 +289,31 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
         }
 
         if (hasError) {
-            e.preventDefault();
             return false;
         }
 
-        return confirm('¿Está seguro de que desea guardar los cambios en su perfil?');
+        if (confirm('¿Está seguro de que desea guardar los cambios en su perfil?')) {
+            try {
+                const updatePayload = { email: email };
+                if (password) {
+                    updatePayload.password = password;
+                }
+
+                if (window.supabase) {
+                    const { data, error } = await window.supabase.auth.updateUser(updatePayload);
+                    if (error) {
+                        alert("Error al actualizar credenciales: " + error.message);
+                        return false;
+                    }
+                }
+                
+                document.getElementById('profile-edit-form').submit();
+            } catch (error) {
+                alert("Ocurrió un error inesperado al conectar con Supabase.");
+                console.error(error);
+            }
+        }
+        return false;
     }
 
     function toggleRouteForm() {
