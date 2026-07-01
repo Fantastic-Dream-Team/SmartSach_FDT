@@ -2,6 +2,51 @@
 require_once __DIR__ . '/../components/header.php';
 require_once __DIR__ . '/../models/ReporteIncidencia.php';
 
+// --- INICIO MOCK DATA ---
+if (!isset($user) || empty($user)) {
+    $user = [
+        'usuario_id' => 1,
+        'nombre' => 'Angélica',
+        'apellido' => 'Acosta',
+        'correo_electronico' => 'angelica19.fb@gmail.com',
+        'telefono' => '6943-1234',
+        'cedula' => '4-725-455',
+        'direccion' => 'David Centro, cerca del parque'
+    ];
+}
+
+if (!isset($ubicaciones) || empty($ubicaciones)) {
+    $ubicaciones = [
+        [
+            'ubicacion_id' => 1,
+            'nombre_referencia' => 'David Este',
+            'descripcion_direccion' => 'David, atrás de la clínica Julio M., casa 3',
+            'latitud' => 8.42867,
+            'longitud' => -82.42875,
+        ],
+        [
+            'ubicacion_id' => 2,
+            'nombre_referencia' => 'Algarrobos',
+            'descripcion_direccion' => 'Barrio horizontes al lado de la cancha, casa 47',
+            'latitud' => 8.45500,
+            'longitud' => -82.43500,
+        ]
+    ];
+}
+
+if (isset($_GET['action'])) {
+    if ($_GET['action'] == 'update' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $_SESSION['success'] = "Datos de perfil actualizados exitosamente (Simulación).";
+        header("Location: profile");
+        exit;
+    } elseif ($_GET['action'] == 'add_route' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $_SESSION['success'] = "Nueva ruta agregada exitosamente (Simulación).";
+        header("Location: profile");
+        exit;
+    }
+}
+// --- FIN MOCK DATA ---
+
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {

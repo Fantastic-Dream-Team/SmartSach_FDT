@@ -1,6 +1,21 @@
 <?php
 require_once __DIR__ . '/../components/header.php';
 
+// --- INICIO MOCK DATA ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['metodo_pago'])) {
+    $_SESSION['success'] = "Pago simulado de $10.00 con " . htmlspecialchars($_POST['metodo_pago']) . " procesado exitosamente.";
+    header("Location: payments");
+    exit;
+}
+
+if (!isset($saldoPendiente)) {
+    $saldoPendiente = 10.00;
+}
+if (!isset($suscripcionMorosa)) {
+    $suscripcionMorosa = 123;
+}
+// --- FIN MOCK DATA ---
+
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {
@@ -68,7 +83,7 @@ if (substr($base, -1) !== '/') {
                 <div class="space-y-3" id="payment-methods">
                     <button type="button" onclick="selectMethod('tarjeta')" id="method-tarjeta" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
                         <span class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-primary">credit_card</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                             Tarjeta de Crédito / Débito
                         </span>
                         <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-tarjeta"></span>
@@ -76,7 +91,7 @@ if (substr($base, -1) !== '/') {
                     
                     <button type="button" onclick="selectMethod('paypal')" id="method-paypal" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
                         <span class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[#003087]"><path d="M7.144 19.532l1.049-5.751c.11-.606.691-1.002 1.304-.948.337.027 1.343.149 1.942.149 2.145 0 3.73-.559 4.38-2.671.305-1.026.155-2.062-.355-2.736-.615-.815-1.776-1.12-3.136-1.12H8.761c-.604 0-1.126.43-1.226 1.029L5.05 19.532h2.094z"></path><path d="M10.158 2.22c.11-.606.691-1.002 1.304-.948 1.401.11 3.559.278 4.757.278 2.502 0 4.35-.65 5.109-3.109.355-1.196.181-2.404-.414-3.19-.716-.95-2.072-1.306-3.659-1.306h-4.148c-.705 0-1.314.502-1.43 1.2L9.208 9.48c-.029.155.088.303.245.303h1.831l.874-4.8c.11-.606.691-1.002 1.304-.948.337.027 1.343.149 1.942.149 1.625 0 2.825-.422 3.318-2.023.23-.746.12-1.498-.266-1.99-.441-.584-1.272-.803-2.247-.803H12.75c-.352 0-.657.251-.715.6L10.158 2.22z"></path></svg>
                             PayPal
                         </span>
                         <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-paypal"></span>
@@ -84,7 +99,7 @@ if (substr($base, -1) !== '/') {
 
                     <button type="button" onclick="selectMethod('ach')" id="method-ach" class="w-full flex items-center justify-between p-3.5 rounded-xl border-2 border-surface-container hover:border-primary transition-all text-sm font-semibold text-on-surface text-left">
                         <span class="flex items-center gap-3">
-                            <span class="material-symbols-outlined text-primary">account_balance</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary"><path d="M3 21h18"></path><path d="M3 10h18"></path><path d="M5 6l7-3 7 3"></path><path d="M4 10v11"></path><path d="M20 10v11"></path><path d="M8 14v3"></path><path d="M12 14v3"></path><path d="M16 14v3"></path></svg>
                             Banco Local (ACH)
                         </span>
                         <span class="w-4 h-4 rounded-full border border-on-surface-variant/40 flex items-center justify-center" id="radio-ach"></span>

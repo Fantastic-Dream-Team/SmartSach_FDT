@@ -4,6 +4,46 @@ require_once ROOT_PATH . '/backend/src/models/ReporteIncidencia.php';
 
 $reporteModelHelper = new ReporteIncidencia();
 
+// --- INICIO MOCK DATA ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ubicacion_id'])) {
+    $_SESSION['success'] = "Reporte de incidencia enviado exitosamente (Simulación). Nos pondremos en contacto pronto.";
+    header("Location: help");
+    exit;
+}
+
+if (!isset($ubicaciones) || empty($ubicaciones)) {
+    $ubicaciones = [
+        [
+            'ubicacion_id' => 1,
+            'nombre_referencia' => 'Casa Principal (David Este)',
+        ],
+        [
+            'ubicacion_id' => 2,
+            'nombre_referencia' => 'Oficina (Doleguita)',
+        ]
+    ];
+}
+
+if (!isset($reportes) || empty($reportes)) {
+    $reportes = [
+        [
+            'reporte_id' => 1029,
+            'fecha_reporte' => '2026-05-15',
+            'tipo_incidencia' => 'el_camion_no_paso',
+            'nombre_referencia' => 'Casa Principal (David Este)',
+            'estado_reporte' => 'resuelto'
+        ],
+        [
+            'reporte_id' => 1042,
+            'fecha_reporte' => '2026-05-28',
+            'tipo_incidencia' => 'desperdicio_en_via',
+            'nombre_referencia' => 'Casa Principal (David Este)',
+            'estado_reporte' => 'en_proceso'
+        ]
+    ];
+}
+// --- FIN MOCK DATA ---
+
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
 if (substr($base, -1) !== '/') {
     $base .= '/';
