@@ -122,12 +122,14 @@ class ProfileController {
                     throw new Exception("Error al guardar la nueva dirección.");
                 }
 
-                // Activar suscripción si es la primera ubicación
+                // Activar suscripción incondicionalmente para la nueva ubicación
                 $suscripcionModel = new Suscripcion();
                 $suscripciones = $suscripcionModel->findByUsuarioId($userId);
                 
+                $suscripcionModel->create($userId, $ubicacionId, 1, 'moroso');
+                
+                // Si es la primera ubicación, actualizar el estado de verificación
                 if (empty($suscripciones)) {
-                    $suscripcionModel->create($userId, $ubicacionId, 1, 'moroso');
                     $this->usuarioModel->updateVerificationStatus($userId, 'activo');
                 }
 

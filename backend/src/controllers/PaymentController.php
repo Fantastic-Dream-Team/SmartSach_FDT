@@ -26,13 +26,14 @@ class PaymentController {
         
         $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
         $tieneDeuda = false;
-        $suscripcionMorosa = null;
+        $suscripcionesMorosas = [];
+        $totalDeuda = 0.0;
         
         foreach ($suscripciones as $sub) {
             if ($sub['estado_pago'] === 'moroso') {
                 $tieneDeuda = true;
-                $suscripcionMorosa = $sub['suscripcion_id'];
-                break;
+                $suscripcionesMorosas[] = $sub;
+                $totalDeuda += 15.00; // Asumiendo $15.00 por ubicación
             }
         }
 

@@ -20,7 +20,7 @@ if (substr($base, -1) !== '/') {
             <span class="material-symbols-outlined text-red-500 text-2xl">warning</span>
             <div>
                 <strong class="font-bold">Cuenta en Mora:</strong> 
-                <span>Tiene un saldo pendiente de $15.00. Realice el pago para evitar suspensión del servicio.</span>
+                <span>Tiene un saldo pendiente de $<?= number_format($totalDeuda ?? 15.00, 2) ?>. Realice el pago de sus ubicaciones para evitar suspensión del servicio.</span>
             </div>
         </div>
     <?php endif; ?>
@@ -31,7 +31,7 @@ if (substr($base, -1) !== '/') {
         <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm flex flex-col justify-between">
             <div>
                 <span class="text-xs font-semibold text-on-surface-variant/70 uppercase tracking-wider block">Próximo Pago</span>
-                <span class="text-3xl font-black text-primary mt-2 block">$15.00</span>
+                <span class="text-3xl font-black text-primary mt-2 block">$<?= number_format($totalDeuda ?? 15.00, 2) ?></span>
                 <span class="text-xs text-on-surface-variant block mt-1">Próximo corte</span>
             </div>
             <div class="mt-4">
@@ -92,9 +92,21 @@ if (substr($base, -1) !== '/') {
                 </div>
 
                 <!-- Botón de Pago -->
-                <?php if (isset($tieneDeuda) && $tieneDeuda && isset($suscripcionMorosa)): ?>
+                <?php if (isset($tieneDeuda) && $tieneDeuda && !empty($suscripcionesMorosas)): ?>
                     <form action="<?= $base ?>payments" method="POST" id="simulated-payment-form" onsubmit="return confirmPayment(event)" class="mt-6">
-                        <input type="hidden" name="suscripcion_id" value="<?= htmlspecialchars($suscripcionMorosa) ?>">
+                        
+                        <div class="mb-4">
+                            <label for="suscripcion_id" class="block text-sm font-bold text-primary mb-2">Selecciona la ubicación a pagar</label>
+                            <select name="suscripcion_id" id="suscripcion_id" class="w-full p-3.5 rounded-xl border-2 border-surface-container bg-white text-sm font-medium focus:outline-none focus:border-primary transition-colors" required>
+                                <option value="" disabled selected>-- Elige una propiedad --</option>
+                                <?php foreach ($suscripcionesMorosas as $morosa): ?>
+                                    <option value="<?= htmlspecialchars($morosa['suscripcion_id']) ?>">
+                                        <?= htmlspecialchars($morosa['nombre_referencia'] ?? 'Ubicación Desconocida') ?> - $15.00
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
                         <input type="hidden" name="metodo_pago" id="selected-method-val" value="">
                         <button type="submit" class="w-full bg-secondary hover:bg-[#00ab5d] text-white py-3 rounded-full font-bold shadow-md transition-all active:scale-95 flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined">payments</span>
@@ -249,7 +261,10 @@ if (substr($base, -1) !== '/') {
         if (selectedMethod === 'paypal') methodStr = 'PayPal';
         if (selectedMethod === 'ach') methodStr = 'ACH / Banco Local';
 
-        return confirm(`¿Confirmar pago de $15.00 usando ${methodStr}?`);
+        const select = document.getElementById('suscripcion_id');
+        const ubicacionText = select.options[select.selectedIndex].text;
+
+        return confirm(`¿Confirmar pago de ${ubicacionText.trim()} usando ${methodStr}?`);
     }
 </script>
 
