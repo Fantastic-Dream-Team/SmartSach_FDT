@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UbicacionServicio.php';
+require_once __DIR__ . '/../models/Suscripcion.php';
 // WIP: require_once __DIR__ . '/../models/Zona.php';
 
 class ProfileController {
@@ -80,8 +81,8 @@ class ProfileController {
                 
                 header("Location: profile");
                 exit;
-            } catch (Exception $e) {
-                $_SESSION['error'] = $e->getMessage();
+            } catch (Throwable $e) {
+                $_SESSION['error'] = "Error al actualizar: " . $e->getMessage();
                 header("Location: profile");
                 exit;
             }
@@ -121,11 +122,22 @@ class ProfileController {
                     throw new Exception("Error al guardar la nueva dirección.");
                 }
 
+                // Activar suscripción incondicionalmente para la nueva ubicación
+                $suscripcionModel = new Suscripcion();
+                $suscripciones = $suscripcionModel->findByUsuarioId($userId);
+                
+                $suscripcionModel->create($userId, $ubicacionId, 1, 'moroso');
+                
+                // Si es la primera ubicación, actualizar el estado de verificación
+                if (empty($suscripciones)) {
+                    $this->usuarioModel->updateVerificationStatus($userId, 'activo');
+                }
+
                 $_SESSION['success'] = "Ubicación de servicio registrada correctamente. La suscripción se procesará acorde a tu estado de verificación.";
                 header("Location: profile");
                 exit;
-            } catch (Exception $e) {
-                $_SESSION['error'] = $e->getMessage();
+            } catch (Throwable $e) {
+                $_SESSION['error'] = "Error al guardar ubicación: " . $e->getMessage();
                 header("Location: profile");
                 exit;
             }
