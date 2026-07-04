@@ -12,7 +12,7 @@ class Suscripcion {
      * Obtiene las suscripciones de un usuario.
      */
     public function findByUsuarioId($usuarioId) {
-        $sql = "SELECT s.*, u.nombre_referencia, r.nombre_ruta 
+        $sql = "SELECT s.*, u.nombre_referencia, u.descripcion_direccion, r.nombre_ruta 
                 FROM public.suscripciones s
                 LEFT JOIN public.ubicaciones_servicio u ON s.ubicacion_id = u.ubicacion_id
                 LEFT JOIN public.rutas r ON s.ruta_id = r.ruta_id
@@ -26,7 +26,7 @@ class Suscripcion {
      * Obtiene una suscripción por su ID.
      */
     public function findById($id) {
-        $sql = "SELECT s.*, u.nombre_referencia, r.nombre_ruta 
+        $sql = "SELECT s.*, u.nombre_referencia, u.descripcion_direccion, r.nombre_ruta 
                 FROM public.suscripciones s
                 LEFT JOIN public.ubicaciones_servicio u ON s.ubicacion_id = u.ubicacion_id
                 LEFT JOIN public.rutas r ON s.ruta_id = r.ruta_id
