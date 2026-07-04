@@ -26,13 +26,25 @@ class PaymentController {
         
         $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
         $tieneDeuda = false;
-        $suscripcionMorosa = null;
+        $suscripcionesMorosas = [];
+        $todasLasSuscripciones = []; // Para enviar a la vista con el precio calculado
+        $totalDeuda = 0.0;
+        $tieneDeuda = false;
         
         foreach ($suscripciones as $sub) {
+            // Calcular precio dinámico: $10 si es en David, $15 en caso contrario
+            $ref = strtolower($sub['nombre_referencia'] ?? '');
+            $desc = strtolower($sub['descripcion_direccion'] ?? '');
+            $esDavid = (strpos($ref, 'david') !== false) || (strpos($desc, 'david') !== false);
+            $monto = $esDavid ? 10.00 : 15.00;
+            
+            $sub['monto_calculado'] = $monto;
+            $todasLasSuscripciones[] = $sub;
+            
             if ($sub['estado_pago'] === 'moroso') {
                 $tieneDeuda = true;
-                $suscripcionMorosa = $sub['suscripcion_id'];
-                break;
+                $suscripcionesMorosas[] = $sub;
+                $totalDeuda += $monto;
             }
         }
 
@@ -57,10 +69,21 @@ class PaymentController {
                     throw new Exception("ID de suscripción inválido.");
                 }
 
+                // Obtener detalles de la suscripción para el monto
+                $subData = $this->suscripcionModel->findById($suscripcionId);
+                if (!$subData) {
+                    throw new Exception("Suscripción no encontrada.");
+                }
+                
+                $ref = strtolower($subData['nombre_referencia'] ?? '');
+                $desc = strtolower($subData['descripcion_direccion'] ?? '');
+                $esDavid = (strpos($ref, 'david') !== false) || (strpos($desc, 'david') !== false);
+                $monto = $esDavid ? 10.00 : 15.00;
+
                 // Llamar al procedimiento almacenado para procesar el pago
                 $db = Database::getConnection();
-                $monto = 15.00; // Monto por defecto
-                $metodo = 'simulacion_web';
+                $metodoStr = $_POST['metodo_pago'] ?? '';
+                $metodo = $metodoStr ? 'simulacion_' . strtolower($metodoStr) : 'simulacion_web';
                 
                 $sql = "CALL public.sp_procesar_pago_sach(:suscripcion_id, :monto, :metodo)";
                 $stmt = $db->prepare($sql);
