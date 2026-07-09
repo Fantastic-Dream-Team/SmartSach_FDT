@@ -2,15 +2,17 @@
 require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/UbicacionServicio.php';
 require_once __DIR__ . '/../models/Suscripcion.php';
-// WIP: require_once __DIR__ . '/../models/Zona.php';
+require_once __DIR__ . '/../models/Ruta.php'; // <-- AGREGADO
 
 class ProfileController {
     private $usuarioModel;
     private $ubicacionModel;
+    private $rutaModel; // <-- AGREGADO
 
     public function __construct() {
         $this->usuarioModel = new Usuario();
         $this->ubicacionModel = new UbicacionServicio();
+        $this->rutaModel = new Ruta(); // <-- AGREGADO
     }
 
     /**
@@ -37,13 +39,13 @@ class ProfileController {
             ];
         }
         
-        // Antes era Rutas, ahora son Ubicaciones de Servicio
+        // Obtener ubicaciones del usuario
         $ubicaciones = $this->ubicacionModel->findByUsuarioId($userId);
 
-        // [WIP] Cargar Zonas de recolección para el selector del cliente
-        // require_once __DIR__ . '/../models/Zona.php';
-        // $zonaModel = new Zona();
-        // $zonas = $zonaModel->getAllZonas();
+        // OBTENER TODAS LAS RUTAS DISPONIBLES PARA EL SELECTOR <-- NUEVO
+        $rutasDisponibles = $this->rutaModel->getAllRoutes();
+
+        // [WIP] Zonas (se mantiene igual)
         $zonas = [];
 
         require_once __DIR__ . '/../../../frontend/src/pages/profile.php';
@@ -64,18 +66,14 @@ class ProfileController {
             $apellido = trim($_POST['apellido'] ?? '');
             $telefono = trim($_POST['telefono'] ?? '');
             $direccion = trim($_POST['direccion'] ?? '');
-            // NOTA: El correo electrónico idealmente no se debería modificar directamente si es manejado por Supabase,
-            // pero para esta demo, mantendremos la actualización interna de los otros campos.
 
             try {
                 if (empty($nombre) || empty($apellido)) {
                     throw new Exception("El nombre y apellido son requeridos.");
                 }
 
-                // Guardar cambios en BD
                 $this->usuarioModel->updateProfile($userId, $nombre, $apellido, $telefono, $direccion);
                 
-                // Actualizar sesión
                 $_SESSION['user_nombre'] = $nombre;
                 $_SESSION['success'] = "Perfil actualizado correctamente.";
                 
@@ -90,7 +88,7 @@ class ProfileController {
     }
 
     /**
-     * Agrega una nueva ubicación de servicio.
+     * Agrega una nueva ubicación de servicio con ruta seleccionada.
      */
     public function addRoute() {
         if (!isset($_SESSION['user_id'])) {
@@ -105,8 +103,8 @@ class ProfileController {
             $latitud = filter_input(INPUT_POST, 'latitud', FILTER_VALIDATE_FLOAT);
             $longitud = filter_input(INPUT_POST, 'longitud', FILTER_VALIDATE_FLOAT);
             
-            // zona_id ya no aplica directamente en la inserción de ubicación, 
-            // la asignación a una zona se hará mediante rutas de camión (WIP)
+            // RECIBIR LA RUTA SELECCIONADA <-- NUEVO
+            $rutaId = filter_input(INPUT_POST, 'ruta_id', FILTER_VALIDATE_INT);
 
             try {
                 if (empty($nombreReferencia)) {
@@ -115,6 +113,9 @@ class ProfileController {
                 if ($latitud === false || $latitud === null || $longitud === false || $longitud === null) {
                     throw new Exception("Debes marcar una ubicación válida en el mapa.");
                 }
+                if (!$rutaId) {
+                    throw new Exception("Debes seleccionar una ruta de recolección.");
+                }
 
                 // Crear ubicación
                 $ubicacionId = $this->ubicacionModel->create($userId, $nombreReferencia, $descripcion, $latitud, $longitud);
@@ -122,18 +123,11 @@ class ProfileController {
                     throw new Exception("Error al guardar la nueva dirección.");
                 }
 
-                // Activar suscripción incondicionalmente para la nueva ubicación
+                // Crear suscripción CON LA RUTA SELECCIONADA <-- NUEVO
                 $suscripcionModel = new Suscripcion();
-                $suscripciones = $suscripcionModel->findByUsuarioId($userId);
-                
-                $suscripcionModel->create($userId, $ubicacionId, 1, 'moroso');
-                
-                // Si es la primera ubicación, actualizar el estado de verificación
-                if (empty($suscripciones)) {
-                    $this->usuarioModel->updateVerificationStatus($userId, 'activo');
-                }
+                $suscripcionModel->create($userId, $ubicacionId, $rutaId, 'moroso');
 
-                $_SESSION['success'] = "Ubicación de servicio registrada correctamente. La suscripción se procesará acorde a tu estado de verificación.";
+                $_SESSION['success'] = "Ubicación registrada correctamente. Suscripción creada con la ruta seleccionada.";
                 header("Location: profile");
                 exit;
             } catch (Throwable $e) {
@@ -144,4 +138,3 @@ class ProfileController {
         }
     }
 }
-

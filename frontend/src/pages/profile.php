@@ -1,7 +1,8 @@
 <?php
 
 /** @var array $user */
-
+/** @var array $ubicaciones */
+/** @var array $rutasDisponibles */ // <-- NUEVO
 
 require_once __DIR__ . '/../components/header.php';
 require_once __DIR__ . '/../../../backend/src/models/ReporteIncidencia.php';
@@ -199,6 +200,21 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         </div>
                     </div>
 
+                    <!-- NUEVO: SELECTOR DE RUTA -->
+                    <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Ruta de Recolección:</label>
+                        <select name="ruta_id" id="ruta_id" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" required>
+                            <option value="">Selecciona una ruta...</option>
+                            <?php foreach ($rutasDisponibles as $ruta): ?>
+                                <option value="<?= $ruta['ruta_id'] ?>">
+                                    <?= htmlspecialchars($ruta['nombre_ruta']) ?> 
+                                    (<?= htmlspecialchars($ruta['zona_sector'] ?: 'Sin sector') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-on-surface/40 text-[10px] mt-1 px-4">Elige la ruta donde se encuentra tu ubicación.</p>
+                    </div>
+
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Latitud:</label>
@@ -252,14 +268,16 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
 
     // Máscara de Celular (igual a registro)
     const telInput = document.getElementById('edit-telefono');
-    telInput.addEventListener('input', function() {
-        let digits = this.value.replace(/\D/g, '');
-        if (digits.length > 4) {
-            this.value = digits.slice(0, 4) + '-' + digits.slice(4, 8);
-        } else {
-            this.value = digits;
-        }
-    });
+    if (telInput) {
+        telInput.addEventListener('input', function() {
+            let digits = this.value.replace(/\D/g, '');
+            if (digits.length > 4) {
+                this.value = digits.slice(0, 4) + '-' + digits.slice(4, 8);
+            } else {
+                this.value = digits;
+            }
+        });
+    }
 
     async function validateProfileEdit(e) {
         e.preventDefault();
