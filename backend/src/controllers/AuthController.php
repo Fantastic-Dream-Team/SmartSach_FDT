@@ -32,15 +32,19 @@ class AuthController {
                 // Prevenir fijación de sesión regenerando el ID
                 session_regenerate_id(true);
 
-                // Guardar datos en la sesión
+                // Guardar datos en la sesión (INCLUYE ROL)
                 $_SESSION['user_id'] = $user['usuario_id'];
                 $_SESSION['auth_id'] = $user['auth_id'];
                 $_SESSION['user_nombre'] = $user['nombre'];
                 $_SESSION['user_email'] = $user['correo_electronico'];
-                // TODO: Leer rol de metadatos de Supabase. Temporalmente asumimos cliente si no se define.
-                $_SESSION['user_rol'] = 'cliente'; 
+                $_SESSION['user_rol'] = strtolower($user['rol']); // 'cliente' o 'conductor'
 
-                header("Location: dashboard");
+                // Redirigir según el rol
+                if ($_SESSION['user_rol'] === 'conductor') {
+                    header("Location: conductor/dashboard");
+                } else {
+                    header("Location: dashboard");
+                }
                 exit;
             } catch (Exception $e) {
                 $_SESSION['error'] = $e->getMessage();
@@ -77,4 +81,3 @@ class AuthController {
         exit;
     }
 }
-

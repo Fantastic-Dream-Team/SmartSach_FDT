@@ -19,6 +19,13 @@ class Ruta {
     }
 
     /**
+     * Alias de getAllRoutes() para compatibilidad con el controlador.
+     */
+    public function findAll() {
+        return $this->getAllRoutes();
+    }
+
+    /**
      * Obtiene una ruta por ID.
      */
     public function findById($id) {
@@ -57,5 +64,35 @@ class Ruta {
             'id' => $id
         ]);
     }
-}
 
+    /**
+     * Obtiene todos los clientes (con ubicación) suscritos a una ruta específica.
+     * Solo devuelve clientes con estado 'al_dia' o 'moroso' para que el conductor vea ambos.
+     */
+    public function getClientesByRuta($rutaId) {
+        $sql = "SELECT 
+                    u.usuario_id,
+                    u.nombre || ' ' || u.apellido AS cliente_nombre,
+                    u.direccion,
+                    u.telefono,
+                    us.ubicacion_id,
+                    us.descripcion_direccion,
+                    ST_Y(us.coordenadas_gps::geometry) AS latitud,
+                    ST_X(us.coordenadas_gps::geometry) AS longitud,
+                    s.estado_pago,
+                    CASE 
+                        WHEN s.proximo_vencimiento < CURRENT_DATE THEN 'moroso'
+                        ELSE s.estado_pago
+                    END AS estado_financiero
+                FROM public.suscripciones s
+                JOIN public.usuarios u ON s.usuario_id = u.usuario_id
+                JOIN public.ubicaciones_servicio us ON s.ubicacion_id = us.ubicacion_id
+                WHERE s.ruta_id = :ruta_id
+                  AND u.rol = 'Cliente'
+                ORDER BY s.estado_pago DESC, u.nombre ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['ruta_id' => $rutaId]);
+        return $stmt->fetchAll();
+    }
+}

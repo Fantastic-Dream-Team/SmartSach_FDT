@@ -162,6 +162,14 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                             <p class="text-on-surface/40 text-xs mt-1 px-4">Debe contener @ &mdash; Ej: tucorreo@gmail.com</p>
                             <p id="err-email" class="hidden text-red-500 text-xs mt-0.5 px-4"></p>
                         </div>
+                        <!-- ROL -->
+                        <div>
+                            <select id="reg-rol" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none">
+                                <option value="Cliente">Cliente (Solicita servicio)</option>
+                                <option value="Conductor">Conductor (Gestiona rutas)</option>
+                            </select>
+                            <p id="err-rol" class="hidden text-red-500 text-xs mt-1 px-4"></p>
+                        </div>
                         <!-- Contraseña -->
                         <div>
                             <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña" type="password"/>
@@ -293,6 +301,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             const telefono     = document.getElementById('reg-telefono').value.trim();
             const direccion    = document.getElementById('reg-direccion').value.trim();
             const email        = document.getElementById('reg-email').value.trim();
+            const rol          = document.getElementById('reg-rol').value;
             const password     = document.getElementById('reg-password').value;
             const passConfirm  = document.getElementById('reg-password-confirm').value;
 
@@ -365,7 +374,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             btn.disabled = true;
             btn.textContent = 'Registrando...';
 
-            // Registro en Supabase con metadata ampliada
+            // Registro en Supabase con metadata ampliada (INCLUYE ROL)
             const { data, error } = await supabase.auth.signUp({
                 email: email,
                 password: password,
@@ -375,7 +384,8 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         apellido:  apellido,
                         cedula:    cedula,
                         telefono:  telefono,
-                        direccion: direccion
+                        direccion: direccion,
+                        rol:       rol // <-- CLAVE: Se envía el rol a los metadatos
                     }
                 }
             });
@@ -409,4 +419,3 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
     </script>
 </body>
 </html>
-

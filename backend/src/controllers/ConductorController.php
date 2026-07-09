@@ -3,7 +3,6 @@ require_once __DIR__ . '/../models/Usuario.php';
 require_once __DIR__ . '/../models/Ruta.php';
 require_once __DIR__ . '/../models/UbicacionServicio.php';
 require_once __DIR__ . '/../models/CamionRastreo.php';
-// WIP: require_once __DIR__ . '/../models/Zona.php';
 
 class ConductorController {
     private $usuarioModel;
@@ -12,6 +11,7 @@ class ConductorController {
     private $camionModel;
 
     public function __construct() {
+        // Verificar autenticación y rol
         if (!isset($_SESSION['user_id']) || $_SESSION['user_rol'] !== 'conductor') {
             header("Location: auth");
             exit;
@@ -23,51 +23,86 @@ class ConductorController {
     }
 
     /**
-     * Muestra las ubicaciones y el estado de la ruta asignada al camión.
+     * Muestra el dashboard del conductor con el mapa y selector de rutas.
      */
     public function dashboard() {
-        $conductorId = $_SESSION['user_id'];
-        
-        // TODO: Mapear conductor a su ruta y camión de forma dinámica
-        $rutaId = 1; // Fijo temporalmente hasta que se asigne en BD
-        $rutasCamion = $this->rutaModel->findById($rutaId);
-        
-        // [WIP] Agrupación por zonas en desarrollo
-        $selectedZona = null;
-        $zonaId = null;
-
-        // Obtener todas las ubicaciones a recolectar (clientes)
-        // Por ahora obtenemos todas, idealmente se filtrarían por la ruta o zona asignada.
-        // Simularemos obteniendo todas.
-        $ubicaciones = []; 
-
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $rutaId) {
-            $action = $_GET['action'] ?? '';
+        try {
+            $conductorId = $_SESSION['user_id'];
             
-            if ($action === 'start') {
-                $this->rutaModel->updateEstado($rutaId, 'activa');
-                $_SESSION['success'] = "¡Ruta iniciada! La recolección ha comenzado.";
-            } elseif ($action === 'finish') {
-                $this->rutaModel->updateEstado($rutaId, 'inactiva');
-                $_SESSION['success'] = "Servicio de recolección finalizado.";
-            } elseif ($action === 'update_location') {
-                $lat = $_POST['latitud'] ?? 0;
-                $lng = $_POST['longitud'] ?? 0;
-                // $this->camionModel->updateUbicacion(camion_id, $lat, $lng);
+            // Obtener todas las rutas disponibles para el selector
+            $rutasDisponibles = $this->rutaModel->findAll();
+            
+            // Obtener la ruta seleccionada (por GET o la primera disponible)
+            $rutaId = isset($_GET['ruta_id']) ? (int)$_GET['ruta_id'] : null;
+            if (!$rutaId && !empty($rutasDisponibles)) {
+                $rutaId = $rutasDisponibles[0]['ruta_id'];
             }
+            
+            // Obtener los clientes de la ruta seleccionada
+            $clientes = [];
+            $selectedRuta = null;
+            if ($rutaId) {
+                $clientes = $this->rutaModel->getClientesByRuta($rutaId);
+                $selectedRuta = $this->rutaModel->findById($rutaId);
+            }
+
+            // Procesar acciones POST (Iniciar/Finalizar ruta)
+            if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                $action = $_GET['action'] ?? '';
+                
+                if ($action === 'start' && $rutaId) {
+                    $this->rutaModel->updateEstado($rutaId, 'activa');
+                    $_SESSION['success'] = "¡Ruta iniciada! La recolección ha comenzado.";
+                } elseif ($action === 'finish' && $rutaId) {
+                    $this->rutaModel->updateEstado($rutaId, 'inactiva');
+                    $_SESSION['success'] = "Servicio de recolección finalizado.";
+                }
+                header("Location: conductor/dashboard" . ($rutaId ? "?ruta_id=" . $rutaId : ""));
+                exit;
+            }
+
+            // Cargar la vista
+            require_once __DIR__ . '/../../../frontend/src/pages/conductor_dashboard.php';
+            
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Error al cargar el dashboard: " . $e->getMessage();
             header("Location: dashboard");
             exit;
         }
+    }
 
-        require_once __DIR__ . '/../../../frontend/src/pages/conductor_dashboard.php';
+    /**
+     * Endpoint API: Obtiene los clientes de una ruta específica (formato JSON).
+     */
+    public function getClientesPorRuta() {
+        try {
+            header('Content-Type: application/json');
+            
+            $rutaId = isset($_GET['ruta_id']) ? (int)$_GET['ruta_id'] : 0;
+            if ($rutaId <= 0) {
+                echo json_encode(['error' => 'ID de ruta inválido']);
+                return;
+            }
+            
+            $clientes = $this->rutaModel->getClientesByRuta($rutaId);
+            echo json_encode(['success' => true, 'clientes' => $clientes]);
+            
+        } catch (Exception $e) {
+            echo json_encode(['error' => $e->getMessage()]);
+        }
     }
 
     /**
      * Muestra el perfil de solo lectura del conductor.
      */
     public function profile() {
-        $user = $this->usuarioModel->findById($_SESSION['user_id']);
-        require_once __DIR__ . '/../../../frontend/src/pages/conductor_profile.php';
+        try {
+            $user = $this->usuarioModel->findById($_SESSION['user_id']);
+            require_once __DIR__ . '/../../../frontend/src/pages/conductor_profile.php';
+        } catch (Exception $e) {
+            $_SESSION['error'] = "Error al cargar el perfil: " . $e->getMessage();
+            header("Location: dashboard");
+            exit;
+        }
     }
 }
-

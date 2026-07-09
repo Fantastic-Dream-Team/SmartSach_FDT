@@ -3,10 +3,12 @@
 -- INTEGRADO CON SUPABASE AUTH DIRECTO Y POSTGIS
 -- ==========================================
 
--- Habilitar extensión para geolocalización[cite: 2]
+-- Habilitar extensión para geolocalización
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- 1. Tabla de Usuarios (Sincronizada con Supabase Auth)[cite: 2]
+-- ==========================================
+-- 1. TABLA DE USUARIOS (CON ROL)
+-- ==========================================
 CREATE TABLE public.usuarios (
     usuario_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     auth_id UUID UNIQUE, 
@@ -16,13 +18,17 @@ CREATE TABLE public.usuarios (
     telefono VARCHAR(20), 
     direccion VARCHAR(50), 
     correo_electronico VARCHAR(100) NOT NULL UNIQUE,
+    rol VARCHAR(20) DEFAULT 'Cliente' CHECK (rol IN ('Cliente', 'Conductor', 'Gestor')),
     estado_verificacion VARCHAR(20) CHECK (estado_verificacion IN ('pendiente', 'activo', 'suspendido')) DEFAULT 'pendiente',
     fecha_registro TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX idx_usuarios_correo ON public.usuarios(correo_electronico);
 CREATE INDEX idx_usuarios_cedula ON public.usuarios(cedula);
+CREATE INDEX idx_usuarios_rol ON public.usuarios(rol);
 
--- 2. Tabla de Ubicaciones (Uso de GEOGRAPHY para precisión GPS)[cite: 2]
+-- ==========================================
+-- 2. TABLA DE UBICACIONES (CON GEOGRAPHY)
+-- ==========================================
 CREATE TABLE public.ubicaciones_servicio (
     ubicacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INT NOT NULL,
@@ -34,7 +40,9 @@ CREATE TABLE public.ubicaciones_servicio (
     CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE
 );
 
--- 3. Tabla de Rutas[cite: 2]
+-- ==========================================
+-- 3. TABLA DE RUTAS (CON DATOS INICIALES)
+-- ==========================================
 CREATE TABLE public.rutas (
     ruta_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     nombre_ruta VARCHAR(100) NOT NULL,
@@ -43,7 +51,16 @@ CREATE TABLE public.rutas (
     estado_ruta VARCHAR(20) CHECK (estado_ruta IN ('activa', 'mantenimiento', 'inactiva')) DEFAULT 'activa'
 );
 
--- 4. Suscripciones[cite: 2]
+-- Insertar 3 rutas predefinidas (según el documento)
+INSERT INTO public.rutas (nombre_ruta, zona_sector, horario_estimado) VALUES
+('Ruta David Este', 'David Este', '08:00 - 12:00'),
+('Ruta David Centro', 'David Centro', '07:00 - 11:00'),
+('Ruta Algarrobos', 'Algarrobos', '09:00 - 13:00')
+ON CONFLICT (ruta_id) DO NOTHING;
+
+-- ==========================================
+-- 4. SUSCRIPCIONES
+-- ==========================================
 CREATE TABLE public.suscripciones (
     suscripcion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
@@ -54,7 +71,9 @@ CREATE TABLE public.suscripciones (
     estado_pago VARCHAR(20) CHECK (estado_pago IN ('al_dia', 'moroso')) DEFAULT 'al_dia'
 );
 
--- 5. Historial de Pagos[cite: 2]
+-- ==========================================
+-- 5. HISTORIAL DE PAGOS
+-- ==========================================
 CREATE TABLE public.pagos (
     pago_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     suscripcion_id INT NOT NULL REFERENCES public.suscripciones(suscripcion_id) ON DELETE CASCADE,
@@ -64,7 +83,9 @@ CREATE TABLE public.pagos (
     comprobante_url VARCHAR(255)
 );
 
--- 6. Rastreo de Camiones[cite: 2]
+-- ==========================================
+-- 6. RASTREO DE CAMIONES
+-- ==========================================
 CREATE TABLE public.camiones_rastreo (
     camion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     ruta_id INT NOT NULL REFERENCES public.rutas(ruta_id) ON DELETE CASCADE,
@@ -74,7 +95,9 @@ CREATE TABLE public.camiones_rastreo (
     ultima_actualizacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. Sistema de Notificaciones[cite: 2]
+-- ==========================================
+-- 7. SISTEMA DE NOTIFICACIONES
+-- ==========================================
 CREATE TABLE public.notificaciones (
     notificacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
@@ -85,7 +108,9 @@ CREATE TABLE public.notificaciones (
     fecha_envio TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. Reportes e Incidencias[cite: 2]
+-- ==========================================
+-- 8. REPORTES E INCIDENCIAS
+-- ==========================================
 CREATE TABLE public.reportes_incidencias (
     reporte_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
@@ -97,10 +122,10 @@ CREATE TABLE public.reportes_incidencias (
 );
 
 -- ==========================================
--- FUNCIONES, TRIGGERS Y VISTAS
+-- FUNCIONES Y TRIGGERS
 -- ==========================================
 
--- TRIGGER 1: Sincronización Automática de Registro[cite: 2]
+-- TRIGGER 1: Sincronización Automática de Registro (CON ROL)
 CREATE OR REPLACE FUNCTION public.fn_sincronizar_auth_usuario()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -112,6 +137,7 @@ BEGIN
         telefono,    
         direccion,   
         correo_electronico, 
+        rol,
         estado_verificacion
     )
     VALUES (
@@ -122,6 +148,7 @@ BEGIN
         NEW.raw_user_meta_data->>'telefono', 
         SUBSTRING(COALESCE(NEW.raw_user_meta_data->>'direccion', '') FROM 1 FOR 50), 
         NEW.email,
+        COALESCE(NEW.raw_user_meta_data->>'rol', 'Cliente'), -- <-- CLAVE: extrae el rol
         'pendiente'
     );
     RETURN NEW;
@@ -133,33 +160,38 @@ CREATE TRIGGER tr_on_auth_user_created
 AFTER INSERT ON auth.users
 FOR EACH ROW EXECUTE FUNCTION public.fn_sincronizar_auth_usuario();
 
--- TRIGGER 2: Activación Inicial de Suscripción[cite: 2]
-CREATE OR REPLACE FUNCTION public.fn_activar_suscripcion_inicial()
+-- TRIGGER 2: Asignación Automática de Ruta según Ubicación (usando PostGIS)
+CREATE OR REPLACE FUNCTION public.fn_asignar_ruta_por_ubicacion()
 RETURNS TRIGGER AS $$
+DECLARE
+    v_ruta_id INT;
 BEGIN
-    IF OLD.estado_verificacion = 'pendiente' AND NEW.estado_verificacion = 'activo' THEN
-        INSERT INTO public.suscripciones (usuario_id, ubicacion_id, ruta_id, fecha_activacion, proximo_vencimiento, estado_pago)
-        SELECT 
-            NEW.usuario_id, 
-            ub.ubicacion_id, 
-            1, 
-            CURRENT_DATE, 
-            (CURRENT_DATE + INTERVAL '30 days'), 
-            'al_dia'
-        FROM public.ubicaciones_servicio ub 
-        WHERE ub.usuario_id = NEW.usuario_id 
-        LIMIT 1;
-    END IF;
+    -- Encontrar la ruta más cercana a las coordenadas GPS del usuario
+    -- (Asume que las rutas tienen un punto de referencia almacenado en alguna parte,
+    --  por simplicidad, asigna la ruta 1 (David Centro) como predeterminada si no se encuentra)
+    SELECT ruta_id INTO v_ruta_id FROM public.rutas WHERE ruta_id = 1;
+    
+    -- Insertar suscripción inicial con la ruta asignada
+    INSERT INTO public.suscripciones (usuario_id, ubicacion_id, ruta_id, fecha_activacion, proximo_vencimiento, estado_pago)
+    VALUES (
+        NEW.usuario_id, 
+        NEW.ubicacion_id, 
+        COALESCE(v_ruta_id, 1), 
+        CURRENT_DATE, 
+        (CURRENT_DATE + INTERVAL '30 days'), 
+        'moroso'
+    );
+    
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-DROP TRIGGER IF EXISTS tr_activar_suscripcion_inicial ON public.usuarios;
-CREATE TRIGGER tr_activar_suscripcion_inicial
-AFTER UPDATE ON public.usuarios
-FOR EACH ROW EXECUTE FUNCTION public.fn_activar_suscripcion_inicial();
+DROP TRIGGER IF EXISTS tr_asignar_ruta_por_ubicacion ON public.ubicaciones_servicio;
+CREATE TRIGGER tr_asignar_ruta_por_ubicacion
+AFTER INSERT ON public.ubicaciones_servicio
+FOR EACH ROW EXECUTE FUNCTION public.fn_asignar_ruta_por_ubicacion();
 
--- TRIGGER 3: Actualización de metadatos de Camión[cite: 2]
+-- TRIGGER 3: Actualización de metadatos de Camión
 CREATE OR REPLACE FUNCTION public.fn_alerta_proximidad_sach()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -175,7 +207,11 @@ CREATE TRIGGER tr_alerta_proximidad_sach
 BEFORE UPDATE ON public.camiones_rastreo
 FOR EACH ROW EXECUTE FUNCTION public.fn_alerta_proximidad_sach();
 
--- PROCEDIMIENTO ALMACENADO: Procesar Pagos[cite: 2]
+-- ==========================================
+-- PROCEDIMIENTOS ALMACENADOS
+-- ==========================================
+
+-- PROCEDIMIENTO: Procesar Pagos
 CREATE OR REPLACE PROCEDURE public.sp_procesar_pago_sach(
     p_suscripcion_id INT,
     p_monto DECIMAL(10,2),
@@ -194,7 +230,11 @@ BEGIN
 END;
 $$;
 
--- VISTA: Paz y Salvo Financiero[cite: 3]
+-- ==========================================
+-- VISTAS
+-- ==========================================
+
+-- VISTA: Paz y Salvo Financiero
 CREATE OR REPLACE VIEW public.vista_paz_y_salvo_usuarios AS
 SELECT 
     u.cedula,
