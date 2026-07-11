@@ -193,13 +193,13 @@ if (substr($base, -1) !== '/') {
             <?php endif; ?>
         </div>
     </section>
-
     <!-- Inicialización del Mapa de Leaflet.js con CartoDB Positron -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var userLat = <?= $selectedRuta ? $selectedRuta['latitud'] : '8.42867' ?>;
             var userLon = <?= $selectedRuta ? $selectedRuta['longitud'] : '-82.42875' ?>;
             var hasLocation = <?= $selectedRuta ? 'true' : 'false' ?>;
+            var rutaId = <?= ($selectedRuta && isset($selectedRuta['ruta_id'])) ? (int)$selectedRuta['ruta_id'] : '0' ?>;
 
             // Inicializar mapa centrado en la casa del usuario o en David
             var map = L.map('map').setView([userLat, userLon], 14);
@@ -256,62 +256,88 @@ if (substr($base, -1) !== '/') {
                 iconAnchor: [20, 20]
             });
 
-            if (hasLocation) {
+            var statusDot = document.getElementById('status-dot');
+            var statusText = document.getElementById('status-text');
+            var statusSubtext = document.getElementById('status-subtext');
+
+            if (hasLocation && rutaId > 0) {
                 // Marcador del usuario
                 var userMarker = L.marker([userLat, userLon], {
                     icon: houseIcon
                 }).addTo(map);
                 userMarker.bindPopup("<b>Mi Casa</b><br><?= $selectedRuta ? htmlspecialchars($selectedRuta['nombre']) : '' ?>").openPopup();
 
-                // Simulación de camión de recolección acercándose a la casa del usuario
-                var startLat = userLat + 0.003;
-                var startLon = userLon - 0.003;
-                var truckMarker = L.marker([startLat, startLon], {
-                    icon: truckIcon
-                }).addTo(map);
-                truckMarker.bindPopup("<b>Camión smartSACH</b><br>En camino...").openPopup();
+                var truckMarker = null;
 
-                var statusDot = document.getElementById('status-dot');
-                var statusText = document.getElementById('status-text');
-                var statusSubtext = document.getElementById('status-subtext');
+                // Función de polling GET al endpoint
+                function updateTruckPosition() {
+                    fetch('<?= $base ?>api/get_truck_position?ruta_id=' + rutaId)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Estado HTTP ' + response.status);
+                            }
+                            return response.json();
+                        })
+                        .then(data => {
+                            if (data && data.success && data.posicion) {
+                                var tLat = parseFloat(data.posicion.latitud);
+                                var tLon = parseFloat(data.posicion.longitud);
 
-                // Movimiento simulado hacia la casa en 10 pasos
-                var steps = 10;
-                var currentStep = 0;
-                var interval = setInterval(function() {
-                    if (currentStep > steps) {
-                        clearInterval(interval);
-                        statusDot.className = "w-3.5 h-3.5 bg-green-500 rounded-full inline-block animate-pulse";
-                        statusText.innerText = "¡Recolectando en su casa!";
-                        statusSubtext.innerText = "El camión está frente a su vivienda en este momento.";
-                        truckMarker.bindPopup("<b>Camión smartSACH</b><br>¡Aquí recolectando!").openPopup();
-                        return;
-                    }
+                                if (isNaN(tLat) || isNaN(tLon)) {
+                                    console.error("Coordenadas recibidas inválidas");
+                                    return;
+                                }
 
-                    var ratio = currentStep / steps;
-                    var curLat = startLat + (userLat - startLat) * ratio;
-                    var curLon = startLon + (userLon - startLon) * ratio;
-                    truckMarker.setLatLng([curLat, curLon]);
+                                // Si el marcador del camión no existe aún, se agrega
+                                if (!truckMarker) {
+                                    truckMarker = L.marker([tLat, tLon], {
+                                        icon: truckIcon
+                                    }).addTo(map);
+                                    truckMarker.bindPopup("<b>Camión smartSACH</b><br>Rastreando en tiempo real").openPopup();
+                                } else {
+                                    // Actualizar posición dinámicamente sin recargar la página
+                                    truckMarker.setLatLng([tLat, tLon]);
+                                }
 
-                    var distanceM = Math.round((1 - ratio) * 450); // Simular metros
-                    if (distanceM > 0) {
-                        statusText.innerText = "Camión acercándose...";
-                        statusSubtext.innerText = "El camión está a aproximadamente " + distanceM + " metros de su casa.";
-                    }
+                                // Calcular la distancia usando L.LatLng
+                                var userLatLng = L.latLng(userLat, userLon);
+                                var truckLatLng = L.latLng(tLat, tLon);
+                                var distanceM = Math.round(userLatLng.distanceTo(truckLatLng));
 
-                    currentStep++;
-                }, 3000);
+                                statusDot.className = "w-3.5 h-3.5 bg-green-500 rounded-full inline-block animate-pulse";
+                                if (distanceM < 50) {
+                                    statusText.innerText = "¡Recolectando en su casa!";
+                                    statusSubtext.innerText = "El camión está frente a su vivienda en este momento.";
+                                    truckMarker.bindPopup("<b>Camión smartSACH</b><br>¡Aquí recolectando!").openPopup();
+                                } else {
+                                    statusText.innerText = "Camión en movimiento...";
+                                    statusSubtext.innerText = "El camión está a aproximadamente " + distanceM + " metros de su casa.";
+                                }
+                            } else {
+                                // No hay camión activo en ruta
+                                statusDot.className = "w-3.5 h-3.5 bg-amber-500 rounded-full inline-block animate-pulse";
+                                statusText.innerText = "Esperando ruta...";
+                                statusSubtext.innerText = "El conductor aún no ha iniciado el recorrido.";
+                                if (truckMarker) {
+                                    map.removeLayer(truckMarker);
+                                    truckMarker = null;
+                                }
+                            }
+                        })
+                        .catch(error => {
+                            console.error("Error obteniendo ubicación:", error);
+                            statusDot.className = "w-3.5 h-3.5 bg-red-500 rounded-full inline-block";
+                            statusText.innerText = "Error de conexión";
+                            statusSubtext.innerText = "No se puede obtener la posición actual del camión.";
+                        });
+                }
+
+                // Iniciar polling cada 10 segundos
+                updateTruckPosition();
+                var pollingInterval = setInterval(updateTruckPosition, 10000);
             } else {
-                // Simulación de camión desplazándose en una ruta por defecto (David Centro)
-                var truckMarker = L.marker(rutaDavidCentro[0], {
-                    icon: truckIcon
-                }).addTo(map);
-                truckMarker.bindPopup("<b>Camión smartSACH</b><br>En Ruta David Centro").openPopup();
-
-                var statusDot = document.getElementById('status-dot');
-                var statusText = document.getElementById('status-text');
-                var statusSubtext = document.getElementById('status-subtext');
-
+                // Sin dirección registrada o seleccionada
+                statusDot.className = "w-3.5 h-3.5 bg-amber-500 rounded-full inline-block";
                 statusText.innerText = "Monitoreando rutas...";
                 statusSubtext.innerText = "Registre una dirección para rastrear su camión.";
             }

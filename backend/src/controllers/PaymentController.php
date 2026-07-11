@@ -80,6 +80,17 @@ class PaymentController {
                 $esDavid = (strpos($ref, 'david') !== false) || (strpos($desc, 'david') !== false);
                 $monto = $esDavid ? 10.00 : 15.00;
 
+                // Validación estricta de tipos: asegurar que el monto es estrictamente numérico
+                if (!is_numeric($monto)) {
+                    throw new Exception("El monto calculado no es un valor numérico válido.");
+                }
+
+                // Validar opcionalmente monto proveniente de parámetros externos
+                $montoExterno = $_POST['monto'] ?? null;
+                if ($montoExterno !== null && !is_numeric($montoExterno)) {
+                    throw new Exception("El monto recibido no es estrictamente numérico.");
+                }
+
                 // Llamar al procedimiento almacenado para procesar el pago
                 $db = Database::getConnection();
                 $metodoStr = $_POST['metodo_pago'] ?? '';

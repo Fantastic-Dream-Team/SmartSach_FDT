@@ -60,7 +60,7 @@ if (substr($base, -1) !== '/') {
             <!-- Panel Izquierdo: Control de Operación -->
             <div class="lg:col-span-1 space-y-6">
                 <!-- Tarjeta de Control -->
-                <div class="<?= $estaActivo ? 'bg-primary text-white' : 'bg-slate-900 text-white' ?> p-6 rounded-xl shadow-xl flex flex-col justify-between h-[360px]">
+                <div class="<?= $estaActivo ? 'bg-primary text-white' : 'bg-slate-900 text-white' ?> p-6 rounded-xl shadow-xl flex flex-col justify-between min-h-[360px] pb-6">
                     <div>
                         <span class="<?= $estaActivo ? 'bg-[#00c46a] animate-pulse' : 'bg-[#ba1a1a]' ?> text-white text-[10px] font-bold uppercase px-2.5 py-1 rounded-full inline-block">
                             <?= $estaActivo ? '🟢 En Tránsito (Activa)' : '🔴 Ruta Inactiva' ?>
@@ -95,6 +95,20 @@ if (substr($base, -1) !== '/') {
                                     Finalizar Ruta
                                 </button>
                             </form>
+                            
+                            <!-- Controles de simulación de recorrido -->
+                            <div class="mt-4 pt-4 border-t border-white/20 space-y-2">
+                                <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-200 text-center">Simulador de Recorrido / GPS</p>
+                                <div class="flex gap-2">
+                                    <button type="button" id="btnIniciarRecorrido" class="flex-1 bg-[#00c46a] hover:bg-[#00ab5d] text-white text-xs py-2.5 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1 active:scale-95">
+                                        <span class="material-symbols-outlined text-sm">play_circle</span> Iniciar Recorrido
+                                    </button>
+                                    <button type="button" id="btnFinalizarRecorrido" class="flex-1 bg-yellow-500 hover:bg-yellow-600 text-slate-900 text-xs py-2.5 px-3 rounded-lg font-bold transition-all flex items-center justify-center gap-1 active:scale-95 opacity-50 cursor-not-allowed" disabled>
+                                        <span class="material-symbols-outlined text-sm">pause_circle</span> Interrumpir
+                                    </button>
+                                </div>
+                                <div id="simulation-status" class="text-[10px] text-center text-slate-200 italic mt-1">Estado: Recorrido no iniciado</div>
+                            </div>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -173,6 +187,9 @@ if (substr($base, -1) !== '/') {
 
                 // Dibujar marcadores y preparar waypoints
                 var waypoints = [];
+                var truckMarker = null;
+                var routeCoordinates = [];
+                var currentRouteIndex = 0;
 
                 if (clientes.length > 0 && estaActivo) {
                     // Marcar posición inicial del camión (simulada)
@@ -186,7 +203,7 @@ if (substr($base, -1) !== '/') {
                         iconAnchor: [17, 17]
                     });
                     
-                    L.marker([truckLat, truckLon], {icon: truckIcon}).addTo(map)
+                    truckMarker = L.marker([truckLat, truckLon], {icon: truckIcon}).addTo(map)
                         .bindPopup("<b>🚛 Ubicación del Camión</b>").openPopup();
                     
                     waypoints.push(L.latLng(truckLat, truckLon));
@@ -213,7 +230,7 @@ if (substr($base, -1) !== '/') {
 
                 // Si está activo y hay clientes, trazar ruta optimizada
                 if (estaActivo && waypoints.length > 1) {
-                    L.Routing.control({
+                    var routingControl = L.Routing.control({
                         waypoints: waypoints,
                         router: L.Routing.osrmv1({
                             serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -226,6 +243,107 @@ if (substr($base, -1) !== '/') {
                         addWaypoints: false,
                         routeWhileDragging: false
                     }).addTo(map);
+
+                    // Escuchar el evento de ruta encontrada para obtener las coordenadas del trayecto físico
+                    routingControl.on('routesfound', function(e) {
+                        var routes = e.routes;
+                        if (routes && routes.length > 0) {
+                            routeCoordinates = routes[0].coordinates;
+                            currentRouteIndex = 0;
+                            console.log("Ruta física cargada. Coordenadas encontradas: ", routeCoordinates.length);
+                        }
+                    });
+                }
+
+                // Lógica de simulación de recorrido y tracking (POST /api/track cada 5 segundos)
+                var trackingInterval = null;
+                var simulatedLat = (clientes.length > 0) ? (parseFloat(clientes[0].latitud) + 0.003) : centerLat + 0.003;
+                var simulatedLng = (clientes.length > 0) ? (parseFloat(clientes[0].longitud) - 0.003) : centerLon - 0.003;
+
+                var btnIniciar = document.getElementById('btnIniciarRecorrido');
+                var btnFinalizar = document.getElementById('btnFinalizarRecorrido');
+                var statusText = document.getElementById('simulation-status');
+
+                if (btnIniciar && btnFinalizar) {
+                    btnIniciar.addEventListener('click', function() {
+                        if (trackingInterval) return;
+
+                        // Cambiar estados de los botones en la interfaz
+                        btnIniciar.disabled = true;
+                        btnIniciar.classList.add('opacity-50', 'cursor-not-allowed');
+                        btnFinalizar.disabled = false;
+                        btnFinalizar.classList.remove('opacity-50', 'cursor-not-allowed');
+                        statusText.innerText = "Estado: Transmitiendo ubicación...";
+                        statusText.classList.add('text-green-400');
+
+                        trackingInterval = setInterval(function() {
+                            // Si hay ruta calculada por Leaflet Routing Machine, seguimos el trayecto
+                            if (routeCoordinates.length > 0) {
+                                if (currentRouteIndex < routeCoordinates.length) {
+                                    var nextPoint = routeCoordinates[currentRouteIndex];
+                                    simulatedLat = nextPoint.lat;
+                                    simulatedLng = nextPoint.lng;
+                                    
+                                    if (truckMarker) {
+                                        truckMarker.setLatLng([simulatedLat, simulatedLng]);
+                                    }
+                                    
+                                    // Avanzar de forma proporcional
+                                    var stepJump = Math.max(1, Math.floor(routeCoordinates.length / 50));
+                                    currentRouteIndex += stepJump;
+                                } else {
+                                    // Bucle de simulación al llegar al final
+                                    currentRouteIndex = 0;
+                                }
+                            } else {
+                                // Desplazamiento lineal básico si no hay ruta cargada
+                                simulatedLat += (centerLat - simulatedLat) * 0.05;
+                                simulatedLng += (centerLon - simulatedLng) * 0.05;
+                                if (truckMarker) {
+                                    truckMarker.setLatLng([simulatedLat, simulatedLng]);
+                                }
+                            }
+
+                            // Petición POST al endpoint asíncrono
+                            fetch('<?= $base ?>api/track', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    ruta_id: rutaId,
+                                    latitud: simulatedLat,
+                                    longitud: simulatedLng
+                                })
+                            })
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error('Estado HTTP ' + response.status);
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('Transmisión de ubicación exitosa:', data);
+                            })
+                            .catch(error => {
+                                console.error('Fallo en la transmisión de ubicación:', error);
+                            });
+
+                        }, 5000);
+                    });
+
+                    btnFinalizar.addEventListener('click', function() {
+                        if (trackingInterval) {
+                            clearInterval(trackingInterval);
+                            trackingInterval = null;
+                        }
+                        btnIniciar.disabled = false;
+                        btnIniciar.classList.remove('opacity-50', 'cursor-not-allowed');
+                        btnFinalizar.disabled = true;
+                        btnFinalizar.classList.add('opacity-50', 'cursor-not-allowed');
+                        statusText.innerText = "Estado: Recorrido pausado / finalizado";
+                        statusText.classList.remove('text-green-400');
+                    });
                 }
 
                 // Selector de ruta: recargar al cambiar

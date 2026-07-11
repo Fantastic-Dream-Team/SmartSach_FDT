@@ -141,6 +141,18 @@ switch ($route) {
         $controller->getClientesPorRuta();
         break;
 
+    case '/api/track':
+        require_once __DIR__ . '/../controllers/ConductorController.php';
+        $controller = new ConductorController();
+        $controller->updateLocation();
+        break;
+
+    case '/api/get_truck_position':
+        require_once __DIR__ . '/../controllers/DashboardController.php';
+        $controller = new DashboardController();
+        $controller->getTruckPosition();
+        break;
+
     // ==========================================
     // PAGOS
     // ==========================================

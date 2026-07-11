@@ -25,13 +25,29 @@ class DashboardController {
 
         $userId = $_SESSION['user_id'];
         
+        // Obtener suscripciones para mapear el ruta_id correspondiente y el estado de cuenta
+        $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
+        $subMap = [];
+        $estadoCuenta = 'Paz y Salvo';
+        
+        if ($suscripciones) {
+            foreach ($suscripciones as $sub) {
+                $subMap[$sub['ubicacion_id']] = $sub;
+                if ($sub['estado_pago'] === 'moroso') {
+                    $estadoCuenta = 'Moroso';
+                }
+            }
+        }
+
         // Obtener ubicaciones y mapear a $rutas
         $ubicaciones = $this->ubicacionModel->findByUsuarioId($userId);
         $rutas = [];
         
         foreach ($ubicaciones as $u) {
+            $sub = $subMap[$u['ubicacion_id']] ?? null;
             $rutas[] = [
                 'id' => $u['ubicacion_id'],
+                'ruta_id' => $sub ? (int)$sub['ruta_id'] : 1, // Asignar ruta_id de la suscripción
                 'nombre' => $u['nombre_referencia'],
                 'descripcion' => $u['descripcion_direccion'],
                 'latitud' => $u['latitud'],
@@ -61,18 +77,6 @@ class DashboardController {
 
         // Definir variables predeterminadas para evitar warnings
         $saldoPendiente = 0.00;
-        $estadoCuenta = 'Paz y Salvo';
-
-        // Obtener estado de cuenta a partir de la suscripción si existe
-        $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
-        if ($suscripciones) {
-            foreach ($suscripciones as $sub) {
-                if ($sub['estado_pago'] === 'moroso') {
-                    $estadoCuenta = 'Moroso';
-                    break;
-                }
-            }
-        }
 
         // Simular zonaRutas para Leaflet Routing Machine
         $zonaRutas = [];
@@ -94,6 +98,57 @@ class DashboardController {
 
         // Renderizar la vista
         require_once __DIR__ . '/../../../frontend/src/pages/dashboard.php';
+    }
+
+    /**
+     * Endpoint API: Obtiene la última posición del camión filtrando por ruta_id (GET).
+     * Retorna un JSON limpio con la latitud y longitud.
+     */
+    public function getTruckPosition() {
+        header('Content-Type: application/json');
+        
+        try {
+            $rutaId = isset($_GET['ruta_id']) ? $_GET['ruta_id'] : null;
+            
+            // Validar que ruta_id sea un entero numérico válido
+            if ($rutaId === null || !filter_var($rutaId, FILTER_VALIDATE_INT)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'El parámetro ruta_id es inválido o no numérico.'
+                ]);
+                return;
+            }
+            $rutaId = (int)$rutaId;
+
+            require_once __DIR__ . '/../models/CamionRastreo.php';
+            $camionModel = new CamionRastreo();
+            $posicion = $camionModel->findByRutaId($rutaId);
+
+            if ($posicion) {
+                echo json_encode([
+                    'success' => true,
+                    'posicion' => [
+                        'latitud' => floatval($posicion['latitud']),
+                        'longitud' => floatval($posicion['longitud']),
+                        'ultima_actualizacion' => $posicion['ultima_actualizacion']
+                    ]
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'No hay ubicación activa de camión registrada para esta ruta.'
+                ]);
+            }
+
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Error interno en el servidor.',
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 }
 

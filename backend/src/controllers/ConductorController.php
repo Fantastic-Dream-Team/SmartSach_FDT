@@ -105,4 +105,99 @@ class ConductorController {
             exit;
         }
     }
+
+    /**
+     * Endpoint API: Actualiza la ubicación del camión en tiempo real (POST).
+     * Envuelve la lógica en try-catch y realiza validación estricta de tipos.
+     */
+    public function updateLocation() {
+        header('Content-Type: application/json');
+        
+        try {
+            // Leer el cuerpo de la petición (JSON)
+            $input = json_decode(file_get_contents('php://input'), true);
+            
+            if (!$input) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'No se recibieron datos JSON válidos.'
+                ]);
+                return;
+            }
+
+            // Validar ruta_id
+            $rutaId = isset($input['ruta_id']) ? $input['ruta_id'] : null;
+            if ($rutaId === null || !filter_var($rutaId, FILTER_VALIDATE_INT)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'El campo ruta_id es inválido o no provisto.'
+                ]);
+                return;
+            }
+            $rutaId = (int)$rutaId;
+
+            // Validar latitud y longitud (validación estricta de tipos)
+            $latitud = isset($input['latitud']) ? $input['latitud'] : null;
+            $longitud = isset($input['longitud']) ? $input['longitud'] : null;
+
+            if ($latitud === null || $longitud === null || !is_numeric($latitud) || !is_numeric($longitud)) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Coordenadas (latitud y longitud) deben ser estrictamente numéricas.'
+                ]);
+                return;
+            }
+
+            $latitud = floatval($latitud);
+            $longitud = floatval($longitud);
+
+            // Verificar si ya existe un registro de camión para la ruta
+            $camion = $this->camionModel->findByRutaId($rutaId);
+            
+            if ($camion) {
+                // Sentencia preparada por PDO encapsulada en el modelo
+                $resultado = $this->camionModel->updateUbicacion($camion['camion_id'], $latitud, $longitud);
+                if (!$resultado) {
+                    throw new Exception("Error al actualizar las coordenadas en la base de datos.");
+                }
+            } else {
+                // Si no existe, insertar un registro inicial con placa simulada
+                $db = Database::getConnection();
+                $sql = "INSERT INTO public.camiones_rastreo (ruta_id, placa_vehiculo, latitud, longitud) 
+                        VALUES (:ruta_id, :placa, :latitud, :longitud)";
+                $stmt = $db->prepare($sql);
+                $placa = 'CAM-' . $rutaId;
+                $resultado = $stmt->execute([
+                    'ruta_id' => $rutaId,
+                    'placa' => $placa,
+                    'latitud' => $latitud,
+                    'longitud' => $longitud
+                ]);
+                if (!$resultado) {
+                    throw new Exception("Error al insertar la ubicación inicial del camión.");
+                }
+            }
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Ubicación actualizada con éxito.',
+                'posicion' => [
+                    'latitud' => $latitud,
+                    'longitud' => $longitud
+                ]
+            ]);
+
+        } catch (Throwable $e) {
+            // Manejo robusto capturando cualquier Throwable
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'error' => 'Error interno en el servidor.',
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 }
