@@ -126,11 +126,23 @@ class DashboardController {
             $posicion = $camionModel->findByRutaId($rutaId);
 
             if ($posicion) {
+                $lat = floatval($posicion['latitud']);
+                $lon = floatval($posicion['longitud']);
+
+                // Geo-fencing de lectura: Ignorar coordenadas antiguas fuera del rango de David
+                if ($lat < 8.3800 || $lat > 8.4800 || $lon < -82.4800 || $lon > -82.4000) {
+                    echo json_encode([
+                        'success' => false,
+                        'message' => 'El camión se encuentra fuera de la zona operativa actual.'
+                    ]);
+                    return;
+                }
+
                 echo json_encode([
                     'success' => true,
                     'posicion' => [
-                        'latitud' => floatval($posicion['latitud']),
-                        'longitud' => floatval($posicion['longitud']),
+                        'latitud' => $lat,
+                        'longitud' => $lon,
                         'ultima_actualizacion' => $posicion['ultima_actualizacion']
                     ]
                 ]);
