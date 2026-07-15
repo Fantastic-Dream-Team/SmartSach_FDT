@@ -150,5 +150,41 @@ class DashboardController {
             ]);
         }
     }
+
+    /**
+     * Da de baja a una suscripción (soft delete).
+     */
+    public function cancelSubscription() {
+        header('Content-Type: application/json');
+        
+        try {
+            if (!isset($_SESSION['user_id'])) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'No autorizado']);
+                return;
+            }
+            
+            $input = json_decode(file_get_contents('php://input'), true);
+            $suscripcionId = $input['suscripcion_id'] ?? null;
+            
+            if (!$suscripcionId || !filter_var($suscripcionId, FILTER_VALIDATE_INT)) {
+                http_response_code(400);
+                echo json_encode(['success' => false, 'error' => 'ID de suscripción inválido']);
+                return;
+            }
+            
+            $resultado = $this->suscripcionModel->cancel((int)$suscripcionId, $_SESSION['user_id']);
+            
+            if ($resultado) {
+                echo json_encode(['success' => true, 'message' => 'Suscripción dada de baja con éxito']);
+            } else {
+                http_response_code(500);
+                echo json_encode(['success' => false, 'error' => 'Error al dar de baja la suscripción']);
+            }
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => 'Error interno', 'message' => $e->getMessage()]);
+        }
+    }
 }
 

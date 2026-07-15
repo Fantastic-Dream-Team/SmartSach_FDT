@@ -154,6 +154,17 @@ class ConductorController {
             $latitud = floatval($latitud);
             $longitud = floatval($longitud);
 
+            // Validar límites geográficos de David, Chiriquí (Geo-fencing)
+            // Latitud: 8.3800 a 8.4800 | Longitud: -82.4800 a -82.4000
+            if ($latitud < 8.3800 || $latitud > 8.4800 || $longitud < -82.4800 || $longitud > -82.4000) {
+                http_response_code(400);
+                echo json_encode([
+                    'success' => false,
+                    'error' => 'Coordenadas fuera de rango. El servicio solo opera en David, Chiriquí.'
+                ]);
+                return;
+            }
+
             // Verificar si ya existe un registro de camión para la ruta
             $camion = $this->camionModel->findByRutaId($rutaId);
             

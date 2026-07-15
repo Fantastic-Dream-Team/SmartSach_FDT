@@ -8,6 +8,8 @@ if (substr($base, -1) !== '/') {
 }
 ?>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
 <div class="max-w-[1200px] mx-auto px-6 py-8">
     <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
@@ -162,69 +164,32 @@ if (substr($base, -1) !== '/') {
                             </tr>
                         </thead>
                         <tbody>
-                            <!-- Mock Row 1 -->
+                            <?php if (empty($historial)): ?>
+                            <tr>
+                                <td colspan="5" class="py-6 text-center text-on-surface-variant">
+                                    No hay historial de facturas.
+                                </td>
+                            </tr>
+                            <?php else: ?>
+                            <?php foreach ($historial as $pago): ?>
                             <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
                                 <td class="py-4">
-                                    <div class="font-semibold text-on-surface">FCT-2026-001 (Servicio smartSACH)</div>
-                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/03/2026</div>
+                                    <div class="font-semibold text-on-surface">FCT-<?= date('Y', strtotime($pago['fecha_pago'])) ?>-<?= str_pad($pago['pago_id'], 4, '0', STR_PAD_LEFT) ?> (Servicio smartSACH)</div>
+                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: <?= date('d/m/Y', strtotime($pago['fecha_pago'])) ?></div>
                                 </td>
-                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92837</td>
+                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-<?= $pago['suscripcion_id'] ?></td>
                                 <td class="py-4 text-center">
-                                    <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
-                                        Pagado
-                                    </span>
+                                    <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">Pagado</span>
                                 </td>
-                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
+                                <td class="py-4 text-right font-bold text-on-surface">$<?= number_format($pago['monto'], 2) ?></td>
                                 <td class="py-4 text-right">
-                                    <a href="#" onclick="alert('Descargando factura FCT-2026-001 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                    <button type="button" onclick="descargarFactura(<?= $pago['pago_id'] ?>, 'FCT-<?= date('Y', strtotime($pago['fecha_pago'])) ?>-<?= str_pad($pago['pago_id'], 4, '0', STR_PAD_LEFT) ?>', '<?= number_format($pago['monto'], 2) ?>', '<?= htmlspecialchars($pago['metodo_pago'] ?? 'N/A') ?>', '<?= date('Ymd', strtotime($pago['fecha_pago'])) ?>', '<?= $pago['suscripcion_id'] ?>', '<?= date('d/m/Y', strtotime($pago['fecha_pago'])) ?>')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
                                         <span class="material-symbols-outlined text-sm">download</span> PDF
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
-                            
-                            <!-- Mock Row 2 -->
-                            <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
-                                <td class="py-4">
-                                    <div class="font-semibold text-on-surface">FCT-2026-002 (Servicio smartSACH)</div>
-                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/04/2026</div>
-                                </td>
-                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92838</td>
-                                <td class="py-4 text-center">
-                                    <span class="inline-block bg-green-100 text-[#00c46a] text-xs font-bold px-3 py-1 rounded-full">
-                                        Pagado
-                                    </span>
-                                </td>
-                                <td class="py-4 text-right font-bold text-on-surface">$10.00</td>
-                                <td class="py-4 text-right">
-                                    <a href="#" onclick="alert('Descargando factura FCT-2026-002 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
-                                        <span class="material-symbols-outlined text-sm">download</span> PDF
-                                    </a>
-                                </td>
-                            </tr>
-
-                            <!-- Row Variable según estado del backend -->
-                            <tr class="border-b border-surface-container/60 hover:bg-surface-container/30 transition-colors">
-                                <td class="py-4">
-                                    <div class="font-semibold text-on-surface">FCT-2026-003 (Servicio smartSACH)</div>
-                                    <div class="text-xs text-on-surface-variant mt-0.5">Generado: 01/05/2026</div>
-                                </td>
-                                <td class="py-4 text-center font-mono text-xs text-on-surface-variant">REF-92839</td>
-                                <td class="py-4 text-center">
-                                    <span class="inline-block <?= (isset($tieneDeuda) && $tieneDeuda) ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#00c46a]' ?> text-xs font-bold px-3 py-1 rounded-full">
-                                        <?= (isset($tieneDeuda) && $tieneDeuda) ? 'Pendiente' : 'Pagado' ?>
-                                    </span>
-                                </td>
-                                <td class="py-4 text-right font-bold text-on-surface">$15.00</td>
-                                <td class="py-4 text-right">
-                                    <?php if (isset($tieneDeuda) && $tieneDeuda): ?>
-                                        <span class="text-on-surface-variant/40 text-xs">No disponible</span>
-                                    <?php else: ?>
-                                        <a href="#" onclick="alert('Descargando factura FCT-2026-003 en formato PDF...')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
-                                            <span class="material-symbols-outlined text-sm">download</span> PDF
-                                        </a>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
+                            <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -330,6 +295,53 @@ if (substr($base, -1) !== '/') {
             btnAlDia.style.display = 'flex';
             if (btnSeleccionar) btnSeleccionar.style.display = 'none';
         }
+    }
+
+    function descargarFactura(pagoId, numFactura, monto, metodo, dateStr, subId, fechaFormat) {
+        // Generar un div temporal
+        const div = document.createElement('div');
+        div.style.padding = '40px';
+        div.style.fontFamily = 'sans-serif';
+        div.style.color = '#1f2937';
+        div.style.backgroundColor = '#ffffff';
+        div.innerHTML = `
+            <div style="border-bottom: 2px solid #00c46a; padding-bottom: 20px; margin-bottom: 30px;">
+                <h1 style="color: #004b34; margin: 0; font-size: 28px;">SmartSACH</h1>
+                <p style="margin: 5px 0 0 0; color: #4b5563;">Recibo de Pago de Servicios Ambientales</p>
+            </div>
+            <div style="margin-bottom: 30px;">
+                <h2 style="font-size: 20px; margin-bottom: 10px;">Detalles de la Factura</h2>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                    <tr><td style="padding: 8px 0; font-weight: bold; width: 40%;">Número de Factura:</td><td style="padding: 8px 0;">${numFactura}</td></tr>
+                    <tr><td style="padding: 8px 0; font-weight: bold;">Fecha de Pago:</td><td style="padding: 8px 0;">${fechaFormat}</td></tr>
+                    <tr><td style="padding: 8px 0; font-weight: bold;">Método de Pago:</td><td style="padding: 8px 0;">${metodo.replace('simulacion_', '')}</td></tr>
+                    <tr><td style="padding: 8px 0; font-weight: bold;">ID de Referencia (Ruta/Casa):</td><td style="padding: 8px 0;">REF-${subId}</td></tr>
+                </table>
+            </div>
+            <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin-top: 40px; text-align: right;">
+                <p style="margin: 0; font-size: 16px; color: #4b5563;">Monto Total Pagado:</p>
+                <p style="margin: 5px 0 0 0; font-size: 32px; font-weight: bold; color: #00c46a;">$${monto}</p>
+            </div>
+            <div style="margin-top: 50px; text-align: center; color: #6b7280; font-size: 12px;">
+                <p>Gracias por contribuir al medio ambiente manteniendo su cuenta al día.</p>
+                <p>SmartSACH - Chiriquí, Panamá</p>
+            </div>
+        `;
+        
+        // El nombre del usuario está en la sesión, pero podemos sugerirlo.
+        // Dado que solo tenemos el ID del pago o podemos poner el nombre genérico
+        const userName = '<?= isset($_SESSION["user_nombre"]) ? preg_replace("/[^a-zA-Z0-9]/", "-", $_SESSION["user_nombre"]) : "Usuario" ?>';
+        const fileName = `${dateStr}-${userName}.pdf`;
+
+        const opt = {
+            margin:       1,
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().set(opt).from(div).save();
     }
 </script>
 

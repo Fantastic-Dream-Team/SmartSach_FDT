@@ -153,6 +153,12 @@ switch ($route) {
         $controller->getTruckPosition();
         break;
 
+    case '/api/cliente/cancelar_suscripcion':
+        require_once __DIR__ . '/../controllers/DashboardController.php';
+        $controller = new DashboardController();
+        $controller->cancelSubscription();
+        break;
+
     // ==========================================
     // PAGOS
     // ==========================================

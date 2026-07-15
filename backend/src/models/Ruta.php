@@ -89,6 +89,7 @@ class Ruta {
                 JOIN public.ubicaciones_servicio us ON s.ubicacion_id = us.ubicacion_id
                 WHERE s.ruta_id = :ruta_id
                   AND u.rol = 'Cliente'
+                  AND (s.estado_suscripcion = 'activa' OR s.estado_suscripcion IS NULL)
                 ORDER BY s.estado_pago DESC, u.nombre ASC";
         
         $stmt = $this->db->prepare($sql);

@@ -101,6 +101,32 @@ if (substr($base, -1) !== '/') {
                                 <p class="text-sm font-bold text-primary">$<?= htmlspecialchars($selectedRuta['costo']) ?></p>
                             </div>
                         </div>
+                        <div class="mt-2 text-right">
+                            <button type="button" onclick="cancelarSuscripcion(<?= $selectedRuta['id'] ?>)" class="text-red-500 hover:text-red-700 text-xs font-bold underline flex items-center justify-end gap-1 ml-auto">
+                                <span class="material-symbols-outlined text-[14px]">delete</span> Dar de baja esta suscripción
+                            </button>
+                        </div>
+                        <script>
+                        function cancelarSuscripcion(subId) {
+                            if(confirm('¿Estás seguro de que deseas eliminar esta dirección de tus suscripciones activas?')) {
+                                fetch('<?= $base ?>api/cliente/cancelar_suscripcion', {
+                                    method: 'POST',
+                                    headers: {'Content-Type': 'application/json'},
+                                    body: JSON.stringify({suscripcion_id: subId})
+                                })
+                                .then(response => response.json())
+                                .then(data => {
+                                    if(data.success) {
+                                        alert('Suscripción cancelada con éxito.');
+                                        window.location.reload();
+                                    } else {
+                                        alert('Error: ' + data.error);
+                                    }
+                                })
+                                .catch(err => console.error(err));
+                            }
+                        }
+                        </script>
                     <?php else: ?>
                         <div class="py-6 text-center text-on-surface-variant">
                             <span class="material-symbols-outlined text-3xl opacity-50 mb-2 block">location_off</span>
@@ -210,35 +236,8 @@ if (substr($base, -1) !== '/') {
                 attribution: '© OpenStreetMap contributors, © CartoDB'
             }).addTo(map);
 
-            // Rutas Fijas (Polylines)
-            var rutaDavidCentro = [
-                [8.43267, -82.43475],
-                [8.42867, -82.42875],
-                [8.42467, -82.42275]
-            ];
-            var rutaDavidEste = [
-                [8.42467, -82.42275],
-                [8.41967, -82.41575],
-                [8.41067, -82.40875]
-            ];
-            var rutaAlgarrobos = [
-                [8.44867, -82.42575],
-                [8.45567, -82.42075],
-                [8.46267, -82.41875]
-            ];
-
-            L.polyline(rutaDavidCentro, {
-                color: '#2d5a46',
-                weight: 4
-            }).addTo(map).bindPopup("Ruta 1: David Centro");
-            L.polyline(rutaDavidEste, {
-                color: '#006e2a',
-                weight: 4
-            }).addTo(map).bindPopup("Ruta 2: David Este");
-            L.polyline(rutaAlgarrobos, {
-                color: '#163a6c',
-                weight: 4
-            }).addTo(map).bindPopup("Ruta 3: Algarrobos");
+            // Las rutas fijas de prueba han sido removidas. 
+            // El mapa ahora sólo muestra elementos dinámicos (casa del cliente y posición del camión).
 
             // Icono para la Casa del Usuario (SVG de Casa en verde)
             var houseIcon = L.divIcon({

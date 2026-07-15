@@ -299,9 +299,16 @@ if (substr($base, -1) !== '/') {
                                 // Desplazamiento lineal básico si no hay ruta cargada
                                 simulatedLat += (centerLat - simulatedLat) * 0.05;
                                 simulatedLng += (centerLon - simulatedLng) * 0.05;
-                                if (truckMarker) {
-                                    truckMarker.setLatLng([simulatedLat, simulatedLng]);
-                                }
+                            }
+
+                            // Aplicar geo-fencing (David, Chiriquí)
+                            if (simulatedLat < 8.3800) simulatedLat = 8.3800;
+                            if (simulatedLat > 8.4800) simulatedLat = 8.4800;
+                            if (simulatedLng < -82.4800) simulatedLng = -82.4800;
+                            if (simulatedLng > -82.4000) simulatedLng = -82.4000;
+
+                            if (truckMarker) {
+                                truckMarker.setLatLng([simulatedLat, simulatedLng]);
                             }
 
                             // Petición POST al endpoint asíncrono
