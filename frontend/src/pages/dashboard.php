@@ -154,13 +154,19 @@ if (substr($base, -1) !== '/') {
                     Estado de Cuenta Financiero
                 </h3>
 
+                <?php 
+                $isMoroso = ($estadoCuenta === 'Moroso');
+                $iconColor = $isMoroso ? 'bg-red-100 text-red-600' : 'bg-green-100 text-[#00c46a]';
+                $textColor = $isMoroso ? 'text-red-600' : 'text-[#00c46a]';
+                $iconName = $isMoroso ? 'error' : 'verified_user';
+                ?>
                 <div class="flex items-center gap-4 my-6">
-                    <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-[#00c46a]">
-                        <span class="material-symbols-outlined text-3xl font-bold">verified_user</span>
+                    <div class="w-16 h-16 <?= $iconColor ?> rounded-full flex items-center justify-center">
+                        <span class="material-symbols-outlined text-3xl font-bold"><?= $iconName ?></span>
                     </div>
                     <div>
                         <span class="text-xs font-semibold text-on-surface-variant/70 uppercase">Estado actual:</span>
-                        <p class="text-2xl font-black text-[#00c46a]"><?= htmlspecialchars($estadoCuenta) ?></p>
+                        <p class="text-2xl font-black <?= $textColor ?>"><?= htmlspecialchars($estadoCuenta) ?></p>
                     </div>
                 </div>
 

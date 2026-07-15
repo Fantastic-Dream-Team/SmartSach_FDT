@@ -15,6 +15,11 @@ if (substr($base, -1) !== '/') {
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 
+<!-- Leaflet.markercluster para agrupar casas con coordenadas idénticas -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
 <div class="max-w-[1200px] mx-auto px-6 py-8">
     <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>
@@ -186,6 +191,13 @@ if (substr($base, -1) !== '/') {
                 });
 
                 // Dibujar marcadores y preparar waypoints
+                var markers = L.markerClusterGroup({
+                    maxClusterRadius: 30, // Agrupar solo si están en la misma casa o muy cerca
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false,
+                    zoomToBoundsOnClick: true
+                });
+                
                 var waypoints = [];
                 var truckMarker = null;
                 var routeCoordinates = [];
@@ -221,12 +233,15 @@ if (substr($base, -1) !== '/') {
                                    "Estado: <span class='font-bold " + (isMoroso ? "text-red-600" : "text-green-600") + "'>" + 
                                    (isMoroso ? "🔴 Moroso" : "🟢 Al Día") + "</span>";
                     
-                    L.marker([lat, lon], {icon: icon}).addTo(map).bindPopup(popupMsg);
+                    var marker = L.marker([lat, lon], {icon: icon}).bindPopup(popupMsg);
+                    markers.addLayer(marker);
                     
                     if (estaActivo) {
                         waypoints.push(L.latLng(lat, lon));
                     }
                 });
+                
+                map.addLayer(markers);
 
                 // Si está activo y hay clientes, trazar ruta optimizada
                 if (estaActivo && waypoints.length > 1) {
