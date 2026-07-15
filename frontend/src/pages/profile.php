@@ -165,7 +165,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                 <?php else: ?>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($ubicaciones as $u): ?>
-                            <div class="bg-surface-container/20 p-4 rounded-lg border border-surface-container flex justify-between items-start">
+                            <div class="bg-surface-container/20 p-4 rounded-lg border border-surface-container flex justify-between items-start hover:shadow-sm transition-shadow">
                                 <div>
                                     <div class="font-bold text-on-surface text-sm"><?= htmlspecialchars($u['nombre_referencia']) ?></div>
                                     <div class="text-[11px] text-on-surface-variant mt-1"><?= htmlspecialchars($u['descripcion_direccion'] ?: 'Sin referencias') ?></div>
@@ -174,9 +174,38 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                                         Lon: <?= htmlspecialchars($u['longitud']) ?>
                                     </div>
                                 </div>
+                                <?php if (!empty($u['suscripcion_id'])): ?>
+                                <div>
+                                    <button type="button" onclick="cancelarSuscripcion(<?= $u['suscripcion_id'] ?>)" class="text-red-500 hover:text-white hover:bg-red-500 border border-red-500 px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[14px]">delete</span> Dar de baja
+                                    </button>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
+                    
+                    <script>
+                    function cancelarSuscripcion(subId) {
+                        if(confirm('¿Estás seguro de que deseas eliminar esta dirección de tus suscripciones activas?')) {
+                            fetch('<?= $base ?>api/cliente/cancelar_suscripcion', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({suscripcion_id: subId})
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if(data.success) {
+                                    alert('Ruta/Suscripción dada de baja con éxito.');
+                                    window.location.reload();
+                                } else {
+                                    alert('Error: ' + data.error);
+                                }
+                            })
+                            .catch(err => console.error(err));
+                        }
+                    }
+                    </script>
                 <?php endif; ?>
             </div>
 

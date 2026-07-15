@@ -47,6 +47,7 @@ class DashboardController {
             $sub = $subMap[$u['ubicacion_id']] ?? null;
             $rutas[] = [
                 'id' => $u['ubicacion_id'],
+                'suscripcion_id' => $sub ? (int)$sub['suscripcion_id'] : null,
                 'ruta_id' => $sub ? (int)$sub['ruta_id'] : 1, // Asignar ruta_id de la suscripción
                 'nombre' => $u['nombre_referencia'],
                 'descripcion' => $u['descripcion_direccion'],

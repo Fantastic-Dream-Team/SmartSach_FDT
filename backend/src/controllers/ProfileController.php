@@ -40,7 +40,23 @@ class ProfileController {
         }
         
         // Obtener ubicaciones del usuario
-        $ubicaciones = $this->ubicacionModel->findByUsuarioId($userId);
+        $ubicacionesRaw = $this->ubicacionModel->findByUsuarioId($userId);
+        
+        $suscripcionModel = new Suscripcion();
+        $suscripciones = $suscripcionModel->findByUsuarioId($userId);
+        $subMap = [];
+        foreach ($suscripciones as $sub) {
+            $subMap[$sub['ubicacion_id']] = $sub;
+        }
+
+        $ubicaciones = [];
+        foreach ($ubicacionesRaw as $u) {
+            $sub = $subMap[$u['ubicacion_id']] ?? null;
+            if ($sub) {
+                $u['suscripcion_id'] = $sub['suscripcion_id'];
+                $ubicaciones[] = $u;
+            }
+        }
 
         // OBTENER TODAS LAS RUTAS DISPONIBLES PARA EL SELECTOR <-- NUEVO
         $rutasDisponibles = $this->rutaModel->getAllRoutes();

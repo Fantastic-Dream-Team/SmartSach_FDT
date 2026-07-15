@@ -102,9 +102,11 @@ if (substr($base, -1) !== '/') {
                             </div>
                         </div>
                         <div class="mt-2 text-right">
-                            <button type="button" onclick="cancelarSuscripcion(<?= $selectedRuta['id'] ?>)" class="text-red-500 hover:text-red-700 text-xs font-bold underline flex items-center justify-end gap-1 ml-auto">
-                                <span class="material-symbols-outlined text-[14px]">delete</span> Dar de baja esta suscripción
-                            </button>
+                            <?php if (!empty($selectedRuta['suscripcion_id'])): ?>
+                                <button type="button" onclick="cancelarSuscripcion(<?= $selectedRuta['suscripcion_id'] ?>)" class="text-red-500 hover:text-red-700 text-xs font-bold underline flex items-center justify-end gap-1 ml-auto">
+                                    <span class="material-symbols-outlined text-[14px]">delete</span> Dar de baja esta suscripción
+                                </button>
+                            <?php endif; ?>
                         </div>
                         <script>
                         function cancelarSuscripcion(subId) {
