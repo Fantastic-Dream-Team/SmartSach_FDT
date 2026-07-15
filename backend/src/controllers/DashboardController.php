@@ -45,6 +45,9 @@ class DashboardController {
         
         foreach ($ubicaciones as $u) {
             $sub = $subMap[$u['ubicacion_id']] ?? null;
+            if (!$sub) {
+                continue; // Ocultar ubicaciones que ya fueron dadas de baja
+            }
             $rutas[] = [
                 'id' => $u['ubicacion_id'],
                 'suscripcion_id' => $sub ? (int)$sub['suscripcion_id'] : null,
