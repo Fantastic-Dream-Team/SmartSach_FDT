@@ -165,14 +165,6 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                             <p class="text-on-surface/40 text-xs mt-1 px-4">Debe contener @ &mdash; Ej: tucorreo@gmail.com</p>
                             <p id="err-email" class="hidden text-red-500 text-xs mt-0.5 px-4"></p>
                         </div>
-                        <!-- ROL -->
-                        <div>
-                            <select id="reg-rol" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface focus:ring-2 focus:ring-primary outline-none">
-                                <option value="Cliente">Cliente (Solicita servicio)</option>
-                                <option value="Conductor">Conductor (Gestiona rutas)</option>
-                            </select>
-                            <p id="err-rol" class="hidden text-red-500 text-xs mt-1 px-4"></p>
-                        </div>
                         <!-- Contraseña -->
                         <div>
                             <div class="relative">
@@ -326,7 +318,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             const telefono     = document.getElementById('reg-telefono').value.trim();
             const direccion    = document.getElementById('reg-direccion').value.trim();
             const email        = document.getElementById('reg-email').value.trim();
-            const rol          = document.getElementById('reg-rol').value;
+            const rol          = 'Cliente';
             const password     = document.getElementById('reg-password').value;
             const passConfirm  = document.getElementById('reg-password-confirm').value;
 

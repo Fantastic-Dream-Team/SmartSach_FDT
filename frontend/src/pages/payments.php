@@ -183,7 +183,7 @@ if (substr($base, -1) !== '/') {
                                 </td>
                                 <td class="py-4 text-right font-bold text-on-surface">$<?= number_format($pago['monto'], 2) ?></td>
                                 <td class="py-4 text-right">
-                                    <button type="button" onclick="descargarFactura(<?= $pago['pago_id'] ?>, 'FCT-<?= date('Y', strtotime($pago['fecha_pago'])) ?>-<?= str_pad($pago['pago_id'], 4, '0', STR_PAD_LEFT) ?>', '<?= number_format($pago['monto'], 2) ?>', '<?= htmlspecialchars($pago['metodo_pago'] ?? 'N/A') ?>', '<?= date('Ymd', strtotime($pago['fecha_pago'])) ?>', '<?= $pago['suscripcion_id'] ?>', '<?= date('d/m/Y', strtotime($pago['fecha_pago'])) ?>')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
+                                    <button type="button" onclick="descargarFactura(<?= $pago['pago_id'] ?>, 'FCT-<?= date('Y', strtotime($pago['fecha_pago'])) ?>-<?= str_pad($pago['pago_id'], 4, '0', STR_PAD_LEFT) ?>', '<?= number_format($pago['monto'], 2) ?>', '<?= htmlspecialchars($pago['metodo_pago'] ?? 'N/A') ?>', '<?= date('Ymd', strtotime($pago['fecha_pago'])) ?>', '<?= $pago['suscripcion_id'] ?>', '<?= date('d/m/Y', strtotime($pago['fecha_pago'])) ?>', '<?= htmlspecialchars(str_replace(' ', '', $pago['nombre_casa'] ?? 'Casa')) ?>')" class="text-secondary hover:underline font-bold text-xs inline-flex items-center gap-1">
                                         <span class="material-symbols-outlined text-sm">download</span> PDF
                                     </button>
                                 </td>
@@ -297,7 +297,7 @@ if (substr($base, -1) !== '/') {
         }
     }
 
-    function descargarFactura(pagoId, numFactura, monto, metodo, dateStr, subId, fechaFormat) {
+    function descargarFactura(pagoId, numFactura, monto, metodo, dateStr, subId, fechaFormat, nombreCasa = 'Casa') {
         // Generar un div temporal
         const div = document.createElement('div');
         div.style.padding = '40px';
@@ -330,8 +330,8 @@ if (substr($base, -1) !== '/') {
         
         // El nombre del usuario está en la sesión, pero podemos sugerirlo.
         // Dado que solo tenemos el ID del pago o podemos poner el nombre genérico
-        const userName = '<?= isset($_SESSION["user_nombre"]) ? preg_replace("/[^a-zA-Z0-9]/", "-", $_SESSION["user_nombre"]) : "Usuario" ?>';
-        const fileName = `${dateStr}-${userName}.pdf`;
+        const userName = '<?= isset($_SESSION["user_nombre"]) ? preg_replace("/[^a-zA-Z0-9]/", "", $_SESSION["user_nombre"]) : "Usuario" ?>';
+        const fileName = `${dateStr}-${userName}-${nombreCasa}.pdf`;
 
         const opt = {
             margin:       1,

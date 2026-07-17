@@ -26,9 +26,10 @@ class Pago {
      * Obtiene los pagos realizados por un usuario a través de sus suscripciones.
      */
     public function findByUsuarioId($usuarioId) {
-        $sql = "SELECT p.*, s.ruta_id 
+        $sql = "SELECT p.*, s.ruta_id, ub.nombre_referencia as nombre_casa 
                 FROM public.pagos p
                 JOIN public.suscripciones s ON p.suscripcion_id = s.suscripcion_id
+                LEFT JOIN public.ubicaciones_servicio ub ON s.ubicacion_id = ub.ubicacion_id
                 WHERE s.usuario_id = :usuario_id 
                 ORDER BY p.fecha_pago DESC";
         $stmt = $this->db->prepare($sql);
