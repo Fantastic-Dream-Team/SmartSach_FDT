@@ -24,12 +24,22 @@ class PaymentController {
         $userId = $_SESSION['user_id'];
         $historial = $this->pagoModel->findByUsuarioId($userId);
         
-        $suscripciones = $this->suscripcionModel->findByUsuarioId($userId);
+        $suscripcionesRaw = $this->suscripcionModel->findByUsuarioId($userId);
+        
+        // Agrupar por ubicacion_id para evitar duplicados (mismo comportamiento que Dashboard y Perfil)
+        $suscripciones = [];
+        foreach ($suscripcionesRaw as $sub) {
+            if (!empty($sub['ubicacion_id'])) {
+                $suscripciones[$sub['ubicacion_id']] = $sub;
+            } else {
+                $suscripciones[] = $sub;
+            }
+        }
+
         $tieneDeuda = false;
         $suscripcionesMorosas = [];
         $todasLasSuscripciones = []; // Para enviar a la vista con el precio calculado
         $totalDeuda = 0.0;
-        $tieneDeuda = false;
         
         foreach ($suscripciones as $sub) {
             // Calcular precio dinámico: $10 si es en David, $15 en caso contrario
