@@ -57,7 +57,8 @@ class ConductorController {
                     $this->rutaModel->updateEstado($rutaId, 'inactiva');
                     $_SESSION['success'] = "Servicio de recolección finalizado.";
                 }
-                header("Location: conductor/dashboard" . ($rutaId ? "?ruta_id=" . $rutaId : ""));
+                // Usar ruta relativa para evitar ERR_TOO_MANY_REDIRECTS
+                header("Location: ?ruta_id=" . $rutaId);
                 exit;
             }
 
@@ -143,26 +144,22 @@ class ConductorController {
             $longitud = isset($input['longitud']) ? $input['longitud'] : null;
 
             if ($latitud === null || $longitud === null || !is_numeric($latitud) || !is_numeric($longitud)) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Coordenadas (latitud y longitud) deben ser estrictamente numéricas.'
-                ]);
-                return;
-            }
-
-            $latitud = floatval($latitud);
-            $longitud = floatval($longitud);
-
-            // Validar límites geográficos de David, Chiriquí (Geo-fencing)
-            // Latitud: 8.3800 a 8.4800 | Longitud: -82.4800 a -82.4000
-            if ($latitud < 8.3800 || $latitud > 8.4800 || $longitud < -82.4800 || $longitud > -82.4000) {
-                http_response_code(400);
-                echo json_encode([
-                    'success' => false,
-                    'error' => 'Coordenadas fuera de rango. El servicio solo opera en David, Chiriquí.'
-                ]);
-                return;
+                // Si no se envían coordenadas (inicialización), establecer por defecto
+                $latitud = 8.444901056161243;
+                $longitud = -82.42998653395294;
+            } else {
+                $latitud = floatval($latitud);
+                $longitud = floatval($longitud);
+                
+                // Validar límites geográficos de David, Chiriquí (Geo-fencing)
+                if ($latitud < 8.3800 || $latitud > 8.4800 || $longitud < -82.4800 || $longitud > -82.4000) {
+                    http_response_code(400);
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Coordenadas fuera de rango. El servicio solo opera en David, Chiriquí.'
+                    ]);
+                    return;
+                }
             }
 
             // Verificar si ya existe un registro de camión para la ruta

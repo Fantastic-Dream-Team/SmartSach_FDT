@@ -339,9 +339,9 @@ if (substr($base, -1) !== '/') {
                         });
                 }
 
-                // Iniciar polling cada 10 segundos
+                // Iniciar polling cada 5 segundos
                 updateTruckPosition();
-                var pollingInterval = setInterval(updateTruckPosition, 10000);
+                var pollingInterval = setInterval(updateTruckPosition, 5000);
             } else {
                 // Sin dirección registrada o seleccionada
                 statusDot.className = "w-3.5 h-3.5 bg-amber-500 rounded-full inline-block";

@@ -189,6 +189,17 @@ class DashboardController {
                 return;
             }
             
+            // Validar si el estado de pago es 'moroso' antes de dar de baja
+            $suscripcion = $this->suscripcionModel->findById((int)$suscripcionId);
+            if ($suscripcion && $suscripcion['estado_pago'] === 'moroso') {
+                http_response_code(403);
+                echo json_encode([
+                    'success' => false, 
+                    'error' => 'No puedes darte de baja si tienes un saldo pendiente. Por favor, cancela tu deuda antes de proceder.'
+                ]);
+                return;
+            }
+
             $resultado = $this->suscripcionModel->cancel((int)$suscripcionId, $_SESSION['user_id']);
             
             if ($resultado) {
