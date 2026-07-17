@@ -86,14 +86,14 @@ class PaymentController {
                 }
 
                 // Validar opcionalmente monto proveniente de parámetros externos
-                $montoExterno = $_POST['monto'] ?? null;
+                $montoExterno = filter_input(INPUT_POST, 'monto', FILTER_VALIDATE_FLOAT) ?? null;
                 if ($montoExterno !== null && !is_numeric($montoExterno)) {
                     throw new Exception("El monto recibido no es estrictamente numérico.");
                 }
 
                 // Llamar al procedimiento almacenado para procesar el pago
                 $db = Database::getConnection();
-                $metodoStr = $_POST['metodo_pago'] ?? '';
+                $metodoStr = htmlspecialchars(trim($_POST['metodo_pago'] ?? ''), ENT_QUOTES, 'UTF-8');
                 $metodo = $metodoStr ? 'simulacion_' . strtolower($metodoStr) : 'simulacion_web';
                 
                 $sql = "CALL public.sp_procesar_pago_sach(:suscripcion_id, :monto, :metodo)";

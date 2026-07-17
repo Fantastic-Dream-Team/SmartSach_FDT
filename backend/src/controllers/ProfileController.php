@@ -78,10 +78,10 @@ class ProfileController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user_id'];
-            $nombre = trim($_POST['nombre'] ?? '');
-            $apellido = trim($_POST['apellido'] ?? '');
-            $telefono = trim($_POST['telefono'] ?? '');
-            $direccion = trim($_POST['direccion'] ?? '');
+            $nombre = htmlspecialchars(trim($_POST['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $apellido = htmlspecialchars(trim($_POST['apellido'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $telefono = htmlspecialchars(trim($_POST['telefono'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $direccion = htmlspecialchars(trim($_POST['direccion'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             try {
                 if (empty($nombre) || empty($apellido)) {
@@ -114,8 +114,8 @@ class ProfileController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user_id'];
-            $nombreReferencia = trim($_POST['nombre'] ?? '');
-            $descripcion = trim($_POST['descripcion'] ?? '');
+            $nombreReferencia = htmlspecialchars(trim($_POST['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+            $descripcion = htmlspecialchars(trim($_POST['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8');
             $latitud = filter_input(INPUT_POST, 'latitud', FILTER_VALIDATE_FLOAT);
             $longitud = filter_input(INPUT_POST, 'longitud', FILTER_VALIDATE_FLOAT);
             

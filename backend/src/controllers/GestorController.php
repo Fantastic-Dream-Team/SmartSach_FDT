@@ -39,7 +39,7 @@ class GestorController {
             
             if ($action === 'update_status') {
                 $reporteId = filter_input(INPUT_POST, 'reporte_id', FILTER_VALIDATE_INT);
-                $estado = trim($_POST['estado'] ?? 'en_proceso');
+                $estado = htmlspecialchars(trim($_POST['estado'] ?? 'en_proceso'), ENT_QUOTES, 'UTF-8');
                 if ($reporteId) {
                     $this->reporteModel->updateEstado($reporteId, $estado);
                     $_SESSION['success'] = "Estado del reporte actualizado a $estado.";
@@ -67,8 +67,8 @@ class GestorController {
                 // Crear Ubicación de Cliente (antes create_route)
                 if ($action === 'create_ubicacion') {
                     $clienteEmail = filter_input(INPUT_POST, 'cliente_email', FILTER_VALIDATE_EMAIL);
-                    $nombre = trim($_POST['nombre'] ?? '');
-                    $descripcion = trim($_POST['descripcion'] ?? '');
+                    $nombre = htmlspecialchars(trim($_POST['nombre'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $descripcion = htmlspecialchars(trim($_POST['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8');
                     $latitud = filter_input(INPUT_POST, 'latitud', FILTER_VALIDATE_FLOAT);
                     $longitud = filter_input(INPUT_POST, 'longitude', FILTER_VALIDATE_FLOAT);
 
@@ -118,8 +118,8 @@ class GestorController {
             $action = $_GET['action'] ?? '';
             try {
                 if ($action === 'create') {
-                    $titulo = trim($_POST['titulo'] ?? '');
-                    $contenido = trim($_POST['contenido'] ?? '');
+                    $titulo = htmlspecialchars(trim($_POST['titulo'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $contenido = htmlspecialchars(trim($_POST['contenido'] ?? ''), ENT_QUOTES, 'UTF-8');
                     if (empty($titulo) || empty($contenido)) {
                         throw new Exception("El título y contenido son requeridos.");
                     }

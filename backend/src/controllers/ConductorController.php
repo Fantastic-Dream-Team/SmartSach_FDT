@@ -89,7 +89,8 @@ class ConductorController {
             echo json_encode(['success' => true, 'clientes' => $clientes]);
             
         } catch (Exception $e) {
-            echo json_encode(['error' => $e->getMessage()]);
+            http_response_code(500);
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
         }
     }
 

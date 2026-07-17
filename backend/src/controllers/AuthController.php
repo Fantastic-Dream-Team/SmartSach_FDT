@@ -15,7 +15,7 @@ class AuthController {
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-            $authId = $_POST['auth_id'] ?? '';
+            $authId = htmlspecialchars(trim($_POST['auth_id'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             try {
                 if (!$email || empty($authId)) {
@@ -68,15 +68,15 @@ class AuthController {
      * Cierra la sesión del usuario en el backend.
      */
     public function logout() {
-        $_SESSION = [];
+        session_unset();
+        session_destroy();
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
+            setcookie(session_name(), '', time() - 3600,
                 $params["path"], $params["domain"],
                 $params["secure"], $params["httponly"]
             );
         }
-        session_destroy();
         header("Location: ./");
         exit;
     }
