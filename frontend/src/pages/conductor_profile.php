@@ -28,15 +28,24 @@ if (substr($base, -1) !== '/') {
                 <p class="text-xs text-on-surface-variant"><?= htmlspecialchars($user['email']) ?></p>
             </div>
 
-            <!-- Restricción Read-Only Prominente -->
-            <div class="bg-amber-50 border border-amber-200 text-amber-800 p-4 rounded-lg text-left text-xs leading-relaxed flex items-start gap-2.5">
-                <span class="material-symbols-outlined text-amber-600 text-lg flex-shrink-0">info</span>
+            <form class="space-y-4 text-left mt-6" onsubmit="return false;">
                 <div>
-                    <strong>Información de Cuenta de Solo Lectura:</strong>
-                    <p class="mt-1 opacity-90">Por motivos de seguridad laboral y trazabilidad de rutas, sus datos personales no pueden ser editados directamente.</p>
-                    <p class="mt-2 font-bold uppercase text-[10px] text-amber-700">Para modificaciones, contacte a su Gestor.</p>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Nombre Completo</label>
+                    <input type="text" value="<?= htmlspecialchars(trim(($user['nombre'] ?? '') . ' ' . ($user['apellido'] ?? ''))) ?>" readonly disabled class="w-full bg-surface-container/40 border-none rounded-lg py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none" />
                 </div>
-            </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Cédula</label>
+                    <input type="text" value="<?= htmlspecialchars($user['cedula'] ?? 'N/A') ?>" readonly disabled class="w-full bg-surface-container/40 border-none rounded-lg py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Teléfono</label>
+                    <input type="text" value="<?= htmlspecialchars($user['telefono'] ?? 'N/A') ?>" readonly disabled class="w-full bg-surface-container/40 border-none rounded-lg py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono" />
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">Correo Electrónico</label>
+                    <input type="email" value="<?= htmlspecialchars($user['email'] ?? $user['correo_electronico'] ?? 'N/A') ?>" readonly disabled class="w-full bg-surface-container/40 border-none rounded-lg py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none" />
+                </div>
+            </form>
             
         </div>
     </div>

@@ -39,6 +39,16 @@ class Usuario {
     }
 
     /**
+     * Busca usuarios por su rol.
+     */
+    public function findByRol($rol) {
+        $sql = "SELECT * FROM public.usuarios WHERE rol = :rol";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['rol' => $rol]);
+        return $stmt->fetchAll();
+    }
+
+    /**
      * Actualiza los datos del perfil de usuario.
      */
     public function updateProfile($id, $nombre, $apellido, $telefono, $direccion) {
@@ -58,5 +68,17 @@ class Usuario {
         
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    /**
+     * Actualiza el estado de verificación de un usuario.
+     */
+    public function updateVerificationStatus($id, $estado) {
+        $sql = "UPDATE public.usuarios SET estado_verificacion = :estado WHERE usuario_id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'estado' => $estado,
+            'id' => $id
+        ]);
     }
 }

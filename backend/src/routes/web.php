@@ -37,6 +37,9 @@ if ($route === '' || $route === '/' || $route === '/index.php') {
 
 // Despacho de rutas
 switch ($route) {
+    // ==========================================
+    // MIGRACIÓN
+    // ==========================================
     case '/migrate':
         try {
             $db = Database::getConnection();
@@ -59,11 +62,17 @@ switch ($route) {
         }
         break;
 
+    // ==========================================
+    // PÁGINAS PÚBLICAS
+    // ==========================================
     case '/':
     case '/home':
         require_once __DIR__ . '/../../../frontend/src/pages/home.php';
         break;
 
+    // ==========================================
+    // AUTENTICACIÓN
+    // ==========================================
     case '/auth':
         require_once __DIR__ . '/../controllers/AuthController.php';
         $controller = new AuthController();
@@ -85,6 +94,9 @@ switch ($route) {
         $controller->logout();
         break;
 
+    // ==========================================
+    // DASHBOARD PRINCIPAL (SEGÚN ROL)
+    // ==========================================
     case '/dashboard':
         $rol = $_SESSION['user_rol'] ?? 'cliente';
         if ($rol === 'gestor') {
@@ -102,6 +114,54 @@ switch ($route) {
         }
         break;
 
+    // ==========================================
+    // DASHBOARD DEL CONDUCTOR (RUTAS ESPECÍFICAS)
+    // ==========================================
+    case '/conductor/dashboard':
+        require_once __DIR__ . '/../controllers/ConductorController.php';
+        $controller = new ConductorController();
+        $controller->dashboard();
+        break;
+
+    // ==========================================
+    // PERFIL DEL CONDUCTOR
+    // ==========================================
+    case '/conductor/profile':
+        require_once __DIR__ . '/../controllers/ConductorController.php';
+        $controller = new ConductorController();
+        $controller->profile();
+        break;
+
+    // ==========================================
+    // API PARA CONDUCTOR (ENDPOINTS)
+    // ==========================================
+    case '/api/conductor/clientes':
+        require_once __DIR__ . '/../controllers/ConductorController.php';
+        $controller = new ConductorController();
+        $controller->getClientesPorRuta();
+        break;
+
+    case '/api/track':
+        require_once __DIR__ . '/../controllers/ConductorController.php';
+        $controller = new ConductorController();
+        $controller->updateLocation();
+        break;
+
+    case '/api/get_truck_position':
+        require_once __DIR__ . '/../controllers/DashboardController.php';
+        $controller = new DashboardController();
+        $controller->getTruckPosition();
+        break;
+
+    case '/api/cliente/cancelar_suscripcion':
+        require_once __DIR__ . '/../controllers/DashboardController.php';
+        $controller = new DashboardController();
+        $controller->cancelSubscription();
+        break;
+
+    // ==========================================
+    // PAGOS
+    // ==========================================
     case '/payments':
         $rol = $_SESSION['user_rol'] ?? 'cliente';
         if ($rol !== 'cliente') {
@@ -117,6 +177,9 @@ switch ($route) {
         }
         break;
 
+    // ==========================================
+    // PERFIL (CLIENTE Y GESTOR)
+    // ==========================================
     case '/profile':
         $rol = $_SESSION['user_rol'] ?? 'cliente';
         if ($rol === 'gestor') {
@@ -143,6 +206,9 @@ switch ($route) {
         }
         break;
 
+    // ==========================================
+    // REPORTES Y AYUDA
+    // ==========================================
     case '/help':
     case '/report':
         $rol = $_SESSION['user_rol'] ?? 'cliente';
@@ -169,6 +235,9 @@ switch ($route) {
         }
         break;
 
+    // ==========================================
+    // NOTIFICACIONES (API)
+    // ==========================================
     case '/notifications':
         header('Content-Type: application/json');
         if (!isset($_SESSION['user_id']) || $_SESSION['user_rol'] !== 'cliente') {
@@ -181,6 +250,9 @@ switch ($route) {
         echo json_encode(['status' => 'success', 'unread_count' => $unread]);
         exit;
 
+    // ==========================================
+    // NOTICIAS (GESTOR)
+    // ==========================================
     case '/news':
         $rol = $_SESSION['user_rol'] ?? 'cliente';
         if ($rol !== 'gestor') {
@@ -192,6 +264,9 @@ switch ($route) {
         $controller->noticias();
         break;
 
+    // ==========================================
+    // RUTA NO ENCONTRADA
+    // ==========================================
     default:
         // Redirigir a Home en caso de ruta no encontrada
         header("Location: ./");

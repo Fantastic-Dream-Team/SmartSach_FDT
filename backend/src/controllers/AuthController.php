@@ -15,7 +15,7 @@ class AuthController {
     public function login() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-            $authId = $_POST['auth_id'] ?? '';
+            $authId = htmlspecialchars(trim($_POST['auth_id'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             try {
                 if (!$email || empty($authId)) {
@@ -32,15 +32,19 @@ class AuthController {
                 // Prevenir fijación de sesión regenerando el ID
                 session_regenerate_id(true);
 
-                // Guardar datos en la sesión
+                // Guardar datos en la sesión (INCLUYE ROL)
                 $_SESSION['user_id'] = $user['usuario_id'];
                 $_SESSION['auth_id'] = $user['auth_id'];
                 $_SESSION['user_nombre'] = $user['nombre'];
                 $_SESSION['user_email'] = $user['correo_electronico'];
-                // TODO: Leer rol de metadatos de Supabase. Temporalmente asumimos cliente si no se define.
-                $_SESSION['user_rol'] = 'cliente'; 
+                $_SESSION['user_rol'] = strtolower($user['rol']); // 'cliente' o 'conductor'
 
-                header("Location: dashboard");
+                // Redirigir según el rol
+                if ($_SESSION['user_rol'] === 'conductor') {
+                    header("Location: conductor/dashboard");
+                } else {
+                    header("Location: dashboard");
+                }
                 exit;
             } catch (Exception $e) {
                 $_SESSION['error'] = $e->getMessage();
@@ -64,17 +68,16 @@ class AuthController {
      * Cierra la sesión del usuario en el backend.
      */
     public function logout() {
-        $_SESSION = [];
+        session_unset();
+        session_destroy();
         if (ini_get("session.use_cookies")) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', time() - 42000,
+            setcookie(session_name(), '', time() - 3600,
                 $params["path"], $params["domain"],
                 $params["secure"], $params["httponly"]
             );
         }
-        session_destroy();
         header("Location: ./");
         exit;
     }
 }
-

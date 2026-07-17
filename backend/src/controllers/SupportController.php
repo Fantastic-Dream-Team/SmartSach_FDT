@@ -41,9 +41,9 @@ class SupportController {
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $userId = $_SESSION['user_id'];
-            $ubicacionId = $_POST['ubicacion_id'] ?? null;
-            $tipoIncidencia = $_POST['tipo_incidencia'] ?? 'otro';
-            $descripcion = trim($_POST['descripcion'] ?? '');
+            $ubicacionId = filter_input(INPUT_POST, 'ubicacion_id', FILTER_VALIDATE_INT);
+            $tipoIncidencia = htmlspecialchars(trim($_POST['tipo_incidencia'] ?? 'otro'), ENT_QUOTES, 'UTF-8');
+            $descripcion = htmlspecialchars(trim($_POST['descripcion'] ?? ''), ENT_QUOTES, 'UTF-8');
 
             try {
                 if (empty($descripcion)) {

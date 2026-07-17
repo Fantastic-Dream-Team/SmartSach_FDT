@@ -1,165 +1,211 @@
--- ==========================================
--- SCRIPT LIMPIO Y OPTIMIZADO PARA SMARTSACH
--- INTEGRADO CON SUPABASE AUTH DIRECTO Y POSTGIS
--- ==========================================
+-- =============================================================================
+-- ESQUEMA COMPLETO Y LIMPIO DE BASE DE DATOS: SmartSACH (Versión 1.9.2)
+-- =============================================================================
 
--- Habilitar extensión para geolocalización[cite: 2]
+-- Habilitar la extensión espacial PostGIS para manejar coordenadas geográficas
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- 1. Tabla de Usuarios (Sincronizada con Supabase Auth)[cite: 2]
-CREATE TABLE public.usuarios (
-    usuario_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    auth_id UUID UNIQUE, 
-    nombre VARCHAR(50) NOT NULL,
-    apellido VARCHAR(50) NOT NULL,
-    cedula VARCHAR(20) NOT NULL UNIQUE,
-    telefono VARCHAR(20), 
-    direccion VARCHAR(50), 
-    correo_electronico VARCHAR(100) NOT NULL UNIQUE,
-    estado_verificacion VARCHAR(20) CHECK (estado_verificacion IN ('pendiente', 'activo', 'suspendido')) DEFAULT 'pendiente',
-    fecha_registro TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-CREATE INDEX idx_usuarios_correo ON public.usuarios(correo_electronico);
-CREATE INDEX idx_usuarios_cedula ON public.usuarios(cedula);
+-- Limpieza ordenada de tablas existentes para evitar conflictos de claves foráneas
+DROP TRIGGER IF EXISTS tr_actualizar_rastreo_camion ON public.camiones_rastreo;
+DROP TRIGGER IF EXISTS tr_activar_usuario_tras_suscripcion ON public.suscripciones;
+DROP TRIGGER IF EXISTS tr_activar_suscripcion_inicial ON public.usuarios;
 
--- 2. Tabla de Ubicaciones (Uso de GEOGRAPHY para precisión GPS)[cite: 2]
+DROP FUNCTION IF EXISTS public.fn_alerta_proximidad_sach();
+DROP FUNCTION IF EXISTS public.fn_activar_usuario_por_suscripcion();
+DROP FUNCTION IF EXISTS public.fn_activar_suscripcion_inicial();
+
+DROP TABLE IF EXISTS public.noticias CASCADE;
+DROP TABLE IF EXISTS public.reportes_incidencias CASCADE;
+DROP TABLE IF EXISTS public.notificaciones CASCADE;
+DROP TABLE IF EXISTS public.camiones_rastreo CASCADE;
+DROP TABLE IF EXISTS public.pagos CASCADE;
+DROP TABLE IF EXISTS public.suscripciones CASCADE;
+DROP TABLE IF EXISTS public.rutas CASCADE;
+DROP TABLE IF EXISTS public.ubicaciones_servicio CASCADE;
+DROP TABLE IF EXISTS public.usuarios CASCADE;
+DROP TABLE IF EXISTS public.spatial_ref_sys CASCADE;
+
+-- =============================================================================
+-- 1. TABLAS PRINCIPALES (ENTIDADES FUERTES)
+-- =============================================================================
+
+-- Tabla de Usuarios del Sistema (Clientes, Empleados y Administradores)
+CREATE TABLE public.usuarios (
+    usuario_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    auth_id uuid UNIQUE, -- Vinculación con Supabase Auth
+    nombre character varying NOT NULL,
+    apellido character varying NOT NULL,
+    cedula character varying NOT NULL UNIQUE,
+    telefono character varying,
+    direccion character varying,
+    correo_electronico character varying NOT NULL UNIQUE,
+    estado_verificacion character varying DEFAULT 'pendiente'::character varying 
+        CHECK (estado_verificacion::text = ANY (ARRAY['pendiente'::character varying, 'activo'::character varying, 'suspendido'::character varying]::text[])),
+    fecha_registro timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    rol character varying DEFAULT 'Cliente'::character varying,
+    CONSTRAINT usuarios_pkey PRIMARY KEY (usuario_id)
+);
+
+-- Tabla de Rutas de Recolección de Basura
+CREATE TABLE public.rutas (
+    ruta_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    nombre_ruta character varying NOT NULL,
+    zona_sector character varying,
+    horario_estimado character varying,
+    estado_ruta character varying DEFAULT 'activa'::character varying 
+        CHECK (estado_ruta::text = ANY (ARRAY['activa'::character varying, 'mantenimiento'::character varying, 'inactiva'::character varying]::text[])),
+    CONSTRAINT rutas_pkey PRIMARY KEY (ruta_id)
+);
+
+-- =============================================================================
+-- 2. TABLAS RELACIONALES Y SERVICIOS GEOGRÁFICOS
+-- =============================================================================
+
+-- Tabla de Ubicaciones asociadas a los Clientes (Puntos de recolección geográficos)
 CREATE TABLE public.ubicaciones_servicio (
-    ubicacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id INT NOT NULL,
-    nombre_referencia VARCHAR(50),
-    coordenadas_gps GEOGRAPHY(POINT, 4326) NOT NULL, 
-    descripcion_direccion TEXT,
-    foto_url VARCHAR(255),
-    fecha_creacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    ubicacion_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    usuario_id integer NOT NULL,
+    nombre_referencia character varying,
+    coordenadas_gps geometry(Point, 4326) NOT NULL, -- Uso de PostGIS para precisión GPS
+    descripcion_direccion text,
+    foto_url character varying,
+    fecha_creacion timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT ubicaciones_servicio_pkey PRIMARY KEY (ubicacion_id),
     CONSTRAINT fk_usuario FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE
 );
 
--- 3. Tabla de Rutas[cite: 2]
-CREATE TABLE public.rutas (
-    ruta_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nombre_ruta VARCHAR(100) NOT NULL,
-    zona_sector VARCHAR(100),
-    horario_estimado VARCHAR(100),
-    estado_ruta VARCHAR(20) CHECK (estado_ruta IN ('activa', 'mantenimiento', 'inactiva')) DEFAULT 'activa'
-);
-
--- 4. Suscripciones[cite: 2]
+-- Tabla de Suscripciones de Clientes a las Rutas y Ubicaciones
 CREATE TABLE public.suscripciones (
-    suscripcion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
-    ubicacion_id INT NOT NULL REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE,
-    ruta_id INT NOT NULL REFERENCES public.rutas(ruta_id),
-    fecha_activacion DATE,
-    proximo_vencimiento DATE,
-    estado_pago VARCHAR(20) CHECK (estado_pago IN ('al_dia', 'moroso')) DEFAULT 'al_dia'
+    suscripcion_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    usuario_id integer NOT NULL,
+    ubicacion_id integer NOT NULL,
+    ruta_id integer NOT NULL,
+    fecha_activacion date,
+    proximo_vencimiento date,
+    estado_pago character varying DEFAULT 'al_dia'::character varying 
+        CHECK (estado_pago::text = ANY (ARRAY['al_dia'::character varying, 'moroso'::character varying]::text[])),
+    estado_suscripcion character varying DEFAULT 'activa'::character varying,
+    CONSTRAINT suscripciones_pkey PRIMARY KEY (suscripcion_id),
+    CONSTRAINT suscripciones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
+    CONSTRAINT suscripciones_ubicacion_id_fkey FOREIGN KEY (ubicacion_id) REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE,
+    CONSTRAINT suscripciones_ruta_id_fkey FOREIGN KEY (ruta_id) REFERENCES public.rutas(ruta_id) ON DELETE RESTRICT
 );
 
--- 5. Historial de Pagos[cite: 2]
+-- =============================================================================
+-- 3. TABLAS DE TRANSACCIONES, RASTREO Y COMUNICACIÓN
+-- =============================================================================
+
+-- Tabla de Pagos de Suscripción
 CREATE TABLE public.pagos (
-    pago_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    suscripcion_id INT NOT NULL REFERENCES public.suscripciones(suscripcion_id) ON DELETE CASCADE,
-    monto DECIMAL(10,2) NOT NULL,
-    fecha_pago TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    metodo_pago VARCHAR(50),
-    comprobante_url VARCHAR(255)
+    pago_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    suscripcion_id integer NOT NULL,
+    monto numeric NOT NULL,
+    fecha_pago timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    metodo_pago character varying,
+    comprobante_url character varying,
+    CONSTRAINT pagos_pkey PRIMARY KEY (pago_id),
+    CONSTRAINT pagos_suscripcion_id_fkey FOREIGN KEY (suscripcion_id) REFERENCES public.suscripciones(suscripcion_id) ON DELETE CASCADE
 );
 
--- 6. Rastreo de Camiones[cite: 2]
+-- Tabla de Rastreo GPS en Tiempo Real de los Camiones Recolectores
 CREATE TABLE public.camiones_rastreo (
-    camion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    ruta_id INT NOT NULL REFERENCES public.rutas(ruta_id) ON DELETE CASCADE,
-    placa_vehiculo VARCHAR(20) NOT NULL UNIQUE,
-    latitud DECIMAL(10, 8) NOT NULL,
-    longitud DECIMAL(11, 8) NOT NULL,
-    ultima_actualizacion TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    camion_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    ruta_id integer NOT NULL,
+    placa_vehiculo character varying NOT NULL UNIQUE,
+    latitud numeric NOT NULL,
+    longitud numeric NOT NULL,
+    ultima_actualizacion timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT camiones_rastreo_pkey PRIMARY KEY (camion_id),
+    CONSTRAINT camiones_rastreo_ruta_id_fkey FOREIGN KEY (ruta_id) REFERENCES public.rutas(ruta_id) ON DELETE CASCADE
 );
 
--- 7. Sistema de Notificaciones[cite: 2]
+-- Tabla de Notificaciones Internas para Usuarios
 CREATE TABLE public.notificaciones (
-    notificacion_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
-    titulo VARCHAR(100) NOT NULL,
-    mensaje TEXT NOT NULL,
-    tipo_notificacion VARCHAR(20) CHECK (tipo_notificacion IN ('pago', 'ruta', 'sistema', 'incidencia')) DEFAULT 'sistema',
-    leido BOOLEAN DEFAULT FALSE,
-    fecha_envio TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    notificacion_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    usuario_id integer NOT NULL,
+    titulo character varying NOT NULL,
+    mensaje text NOT NULL,
+    tipo_notificacion character varying DEFAULT 'sistema'::character varying 
+        CHECK (tipo_notificacion::text = ANY (ARRAY['pago'::character varying, 'ruta'::character varying, 'sistema'::character varying, 'incidencia'::character varying]::text[])),
+    leido boolean DEFAULT false,
+    fecha_envio timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT notificaciones_pkey PRIMARY KEY (notificacion_id),
+    CONSTRAINT notificaciones_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE
 );
 
--- 8. Reportes e Incidencias[cite: 2]
+-- Tabla de Reportes e Incidencias creados por los Usuarios
 CREATE TABLE public.reportes_incidencias (
-    reporte_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    usuario_id INT NOT NULL REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
-    ubicacion_id INT NOT NULL REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE,
-    tipo_incidencia VARCHAR(30) CHECK (tipo_incidencia IN ('no_paso_camion', 'mala_atencion', 'desperdicio_en_via', 'otro')) NOT NULL,
-    descripcion TEXT,
-    estado_reporte VARCHAR(20) CHECK (estado_reporte IN ('abierto', 'en_proceso', 'resuelto', 'cerrado')) DEFAULT 'abierto',
-    fecha_reporte TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    reporte_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    usuario_id integer NOT NULL,
+    ubicacion_id integer NOT NULL,
+    tipo_incidencia character varying NOT NULL 
+        CHECK (tipo_incidencia::text = ANY (ARRAY['no_paso_camion'::character varying, 'mala_atencion'::character varying, 'desperficio_en_via'::character varying, 'otro'::character varying]::text[])),
+    descripcion text,
+    estado_reporte character varying DEFAULT 'abierto'::character varying 
+        CHECK (estado_reporte::text = ANY (ARRAY['abierto'::character varying, 'en_proceso'::character varying, 'resuelto'::character varying, 'cerrado'::character varying]::text[])),
+    fecha_reporte timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT reportes_incidencias_pkey PRIMARY KEY (reporte_id),
+    CONSTRAINT reportes_incidencias_usuario_id_fkey FOREIGN KEY (usuario_id) REFERENCES public.usuarios(usuario_id) ON DELETE CASCADE,
+    CONSTRAINT reportes_incidencias_ubicacion_id_fkey FOREIGN KEY (ubicacion_id) REFERENCES public.ubicaciones_servicio(ubicacion_id) ON DELETE CASCADE
 );
 
--- ==========================================
--- FUNCIONES, TRIGGERS Y VISTAS
--- ==========================================
+-- Tabla de Noticias Normalizada (3FN - Relacionada con autores internos y rutas específicas)
+CREATE TABLE public.noticias (
+    noticia_id integer GENERATED ALWAYS AS IDENTITY NOT NULL,
+    titulo character varying NOT NULL,
+    contenido text NOT NULL,
+    fecha_publicacion timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    creado_por integer, -- Llave foránea que apunta al usuario administrador creador (3FN)
+    ruta_id integer,    -- Llave foránea opcional para segmentar noticias por rutas de recolección
+    CONSTRAINT noticias_pkey PRIMARY KEY (noticia_id),
+    CONSTRAINT fk_noticias_autor FOREIGN KEY (creado_por) REFERENCES public.usuarios(usuario_id) ON DELETE SET NULL,
+    CONSTRAINT fk_noticias_ruta FOREIGN KEY (ruta_id) REFERENCES public.rutas(ruta_id) ON DELETE SET NULL
+);
 
--- TRIGGER 1: Sincronización Automática de Registro[cite: 2]
-CREATE OR REPLACE FUNCTION public.fn_sincronizar_auth_usuario()
+-- =============================================================================
+-- 4. FUNCIONES DE AUTOMATIZACIÓN (TRIGGERS)
+-- =============================================================================
+
+-- Trigger A: Cambia el estado de verificación del usuario a 'activo' al registrar una suscripción (ruta)
+CREATE OR REPLACE FUNCTION public.fn_activar_usuario_por_suscripcion()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.usuarios (
-        auth_id,
-        nombre, 
-        apellido, 
-        cedula, 
-        telefono,    
-        direccion,   
-        correo_electronico, 
-        estado_verificacion
-    )
-    VALUES (
-        NEW.id, 
-        COALESCE(NEW.raw_user_meta_data->>'nombre', 'Usuario'), 
-        COALESCE(NEW.raw_user_meta_data->>'apellido', 'Nuevo'),   
-        COALESCE(NEW.raw_user_meta_data->>'cedula', '0-000-0000'), 
-        NEW.raw_user_meta_data->>'telefono', 
-        SUBSTRING(COALESCE(NEW.raw_user_meta_data->>'direccion', '') FROM 1 FOR 50), 
-        NEW.email,
-        'pendiente'
-    );
+    UPDATE public.usuarios
+    SET estado_verificacion = 'activo'
+    WHERE usuario_id = NEW.usuario_id
+      AND estado_verificacion = 'pendiente';
+
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS tr_on_auth_user_created ON auth.users;
-CREATE TRIGGER tr_on_auth_user_created
-AFTER INSERT ON auth.users
-FOR EACH ROW EXECUTE FUNCTION public.fn_sincronizar_auth_usuario();
-
--- TRIGGER 2: Activación Inicial de Suscripción[cite: 2]
+-- Trigger B: Genera la suscripción inicial con Ruta 1 por defecto al activar un usuario si este NO tiene ya una suscripción
 CREATE OR REPLACE FUNCTION public.fn_activar_suscripcion_inicial()
 RETURNS TRIGGER AS $$
 BEGIN
+    -- Comprobar transiciones de estado
     IF OLD.estado_verificacion = 'pendiente' AND NEW.estado_verificacion = 'activo' THEN
-        INSERT INTO public.suscripciones (usuario_id, ubicacion_id, ruta_id, fecha_activacion, proximo_vencimiento, estado_pago)
-        SELECT 
-            NEW.usuario_id, 
-            ub.ubicacion_id, 
-            1, 
-            CURRENT_DATE, 
-            (CURRENT_DATE + INTERVAL '30 days'), 
-            'al_dia'
-        FROM public.ubicaciones_servicio ub 
-        WHERE ub.usuario_id = NEW.usuario_id 
-        LIMIT 1;
+        -- EVITAR RECURSIVIDAD Y DUPLICACIONES: 
+        -- Solo insertamos si el usuario no tiene ninguna suscripción registrada previamente.
+        IF NOT EXISTS (SELECT 1 FROM public.suscripciones WHERE usuario_id = NEW.usuario_id) THEN
+            INSERT INTO public.suscripciones (usuario_id, ubicacion_id, ruta_id, fecha_activacion, proximo_vencimiento, estado_pago)
+            SELECT 
+                NEW.usuario_id, 
+                ub.ubicacion_id, 
+                1, -- Ruta 1 por defecto del sistema
+                CURRENT_DATE, 
+                (CURRENT_DATE + INTERVAL '30 days'), 
+                'al_dia'::character varying
+            FROM public.ubicaciones_servicio ub 
+            WHERE ub.usuario_id = NEW.usuario_id 
+            LIMIT 1;
+        END IF;
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS tr_activar_suscripcion_inicial ON public.usuarios;
-CREATE TRIGGER tr_activar_suscripcion_inicial
-AFTER UPDATE ON public.usuarios
-FOR EACH ROW EXECUTE FUNCTION public.fn_activar_suscripcion_inicial();
-
--- TRIGGER 3: Actualización de metadatos de Camión[cite: 2]
+-- Trigger C: Actualiza la fecha/hora de actualización cuando cambia la posición GPS del camión
 CREATE OR REPLACE FUNCTION public.fn_alerta_proximidad_sach()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -168,42 +214,26 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-DROP TRIGGER IF EXISTS tr_alerta_proximidad_sach ON public.camiones_rastreo;
-CREATE TRIGGER tr_alerta_proximidad_sach
-BEFORE UPDATE ON public.camiones_rastreo
-FOR EACH ROW EXECUTE FUNCTION public.fn_alerta_proximidad_sach();
+-- =============================================================================
+-- 5. VINCULACIÓN DE DISPARADORES A LAS TABLAS
+-- =============================================================================
 
--- PROCEDIMIENTO ALMACENADO: Procesar Pagos[cite: 2]
-CREATE OR REPLACE PROCEDURE public.sp_procesar_pago_sach(
-    p_suscripcion_id INT,
-    p_monto DECIMAL(10,2),
-    p_metodo VARCHAR(50)
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    INSERT INTO public.pagos (suscripcion_id, monto, metodo_pago)
-    VALUES (p_suscripcion_id, p_monto, p_metodo);
+-- Vincular Trigger A a la tabla suscripciones (AFTER INSERT)
+CREATE TRIGGER tr_activar_usuario_tras_suscripcion
+    AFTER INSERT ON public.suscripciones
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_activar_usuario_por_suscripcion();
 
-    UPDATE public.suscripciones 
-    SET proximo_vencimiento = (proximo_vencimiento + INTERVAL '30 days'),
-        estado_pago = 'al_dia'
-    WHERE suscripcion_id = p_suscripcion_id;
-END;
-$$;
+-- Vincular Trigger B a la tabla usuarios (BEFORE UPDATE)
+CREATE TRIGGER tr_activar_suscripcion_inicial
+    BEFORE UPDATE ON public.usuarios
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_activar_suscripcion_inicial();
 
--- VISTA: Paz y Salvo Financiero[cite: 3]
-CREATE OR REPLACE VIEW public.vista_paz_y_salvo_usuarios AS
-SELECT 
-    u.cedula,
-    (u.nombre || ' ' || u.apellido) AS cliente,
-    s.proximo_vencimiento,
-    CASE 
-        WHEN s.proximo_vencimiento >= CURRENT_DATE THEN 'PAZ Y SALVO'
-        ELSE 'EN MORA'
-    END AS estado_financiero,
-    (s.proximo_vencimiento - CURRENT_DATE) AS dias_para_vencimiento
-FROM public.usuarios u
-JOIN public.suscripciones s ON u.usuario_id = s.usuario_id;
+-- Vincular Trigger C a la tabla camiones_rastreo (BEFORE UPDATE)
+CREATE TRIGGER tr_actualizar_rastreo_camion
+    BEFORE UPDATE ON public.camiones_rastreo
+    FOR EACH ROW
+    EXECUTE FUNCTION public.fn_alerta_proximidad_sach();

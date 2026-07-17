@@ -108,8 +108,11 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         <div>
                             <input id="login-email" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Correo electrónico" type="email" required/>
                         </div>
-                        <div>
-                            <input id="login-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Contraseña" type="password" required/>
+                        <div class="relative">
+                            <input id="login-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3.5 px-6 pr-12 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary transition-all outline-none text-center" placeholder="Contraseña" type="password" required/>
+                            <button type="button" onclick="togglePasswordVisibility('login-password')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-primary focus:outline-none">
+                                <span class="material-symbols-outlined text-[20px]" id="icon-login-password">visibility_off</span>
+                            </button>
                         </div>
                         <button type="submit" id="btn-login" class="w-full bg-[#1e4638] py-3 rounded-full text-white font-semibold hover:bg-primary transition-all shadow-lg active:scale-95 mt-4">
                             Ingresar
@@ -164,13 +167,23 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         </div>
                         <!-- Contraseña -->
                         <div>
-                            <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña" type="password"/>
+                            <div class="relative">
+                                <input id="reg-password" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 pr-12 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Contraseña" type="password"/>
+                                <button type="button" onclick="togglePasswordVisibility('reg-password')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-primary focus:outline-none">
+                                    <span class="material-symbols-outlined text-[20px]" id="icon-reg-password">visibility_off</span>
+                                </button>
+                            </div>
                             <p class="text-on-surface/40 text-xs mt-1 px-4">Mín. 8 caracteres &bull; Mayúscula &bull; Minúscula &bull; Número &bull; Símbolo ($ &amp; # !)</p>
                             <p id="err-password" class="hidden text-red-500 text-xs mt-0.5 px-4"></p>
                         </div>
                         <!-- Confirmar Contraseña -->
                         <div>
-                            <input id="reg-password-confirm" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Confirmar contraseña" type="password"/>
+                            <div class="relative">
+                                <input id="reg-password-confirm" class="w-full bg-[#9bb2a8]/30 border-none rounded-full py-3 px-6 pr-12 text-on-surface placeholder:text-on-surface/50 focus:ring-2 focus:ring-primary outline-none" placeholder="Confirmar contraseña" type="password"/>
+                                <button type="button" onclick="togglePasswordVisibility('reg-password-confirm')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-on-surface-variant hover:text-primary focus:outline-none">
+                                    <span class="material-symbols-outlined text-[20px]" id="icon-reg-password-confirm">visibility_off</span>
+                                </button>
+                            </div>
                             <p id="err-password-confirm" class="hidden text-red-500 text-xs mt-1 px-4"></p>
                         </div>
                         <button type="submit" id="btn-register" class="w-full bg-secondary py-3 rounded-full text-white font-semibold hover:brightness-110 shadow-md transition-all mt-2 active:scale-95">
@@ -206,6 +219,18 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             } else {
                 succEl.textContent = message;
                 succEl.classList.remove('hidden');
+            }
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById('icon-' + inputId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility_off';
             }
         }
     </script>
@@ -293,6 +318,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             const telefono     = document.getElementById('reg-telefono').value.trim();
             const direccion    = document.getElementById('reg-direccion').value.trim();
             const email        = document.getElementById('reg-email').value.trim();
+            const rol          = 'Cliente';
             const password     = document.getElementById('reg-password').value;
             const passConfirm  = document.getElementById('reg-password-confirm').value;
 
@@ -365,7 +391,7 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
             btn.disabled = true;
             btn.textContent = 'Registrando...';
 
-            // Registro en Supabase con metadata ampliada
+            // Registro en Supabase con metadata ampliada (INCLUYE ROL)
             const { data, error } = await supabase.auth.signUp({
                 email: email,
                 password: password,
@@ -375,7 +401,8 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
                         apellido:  apellido,
                         cedula:    cedula,
                         telefono:  telefono,
-                        direccion: direccion
+                        direccion: direccion,
+                        rol:       rol // <-- CLAVE: Se envía el rol a los metadatos
                     }
                 }
             });
@@ -409,4 +436,3 @@ $supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
     </script>
 </body>
 </html>
-

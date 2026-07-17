@@ -48,7 +48,7 @@ class UbicacionServicio {
         $sql = "INSERT INTO public.ubicaciones_servicio 
                 (usuario_id, nombre_referencia, descripcion_direccion, coordenadas_gps, foto_url) 
                 VALUES (:usuario_id, :nombre_referencia, :descripcion_direccion, 
-                        ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326), :foto_url) 
+                        ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326)::geography, :foto_url) 
                 RETURNING ubicacion_id";
         
         $stmt = $this->db->prepare($sql);
@@ -72,7 +72,7 @@ class UbicacionServicio {
         $sql = "UPDATE public.ubicaciones_servicio 
                 SET nombre_referencia = :nombre_referencia, 
                     descripcion_direccion = :descripcion_direccion, 
-                    coordenadas_gps = ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326),
+                    coordenadas_gps = ST_SetSRID(ST_MakePoint(:longitud, :latitud), 4326)::geography,
                     foto_url = COALESCE(:foto_url, foto_url)
                 WHERE ubicacion_id = :id";
         $stmt = $this->db->prepare($sql);

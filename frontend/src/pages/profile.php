@@ -1,6 +1,11 @@
 <?php
+
+/** @var array $user */
+/** @var array $ubicaciones */
+/** @var array $rutasDisponibles */ // <-- NUEVO
+
 require_once __DIR__ . '/../components/header.php';
-require_once __DIR__ . '/../models/ReporteIncidencia.php';
+require_once __DIR__ . '/../../../backend/src/models/ReporteIncidencia.php';
 
 // Determinar ruta base para enlaces
 $base = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME']));
@@ -13,7 +18,21 @@ $reporteModelHelper = new ReporteIncidencia();
 $totalReportes = count($reporteModelHelper->findByUsuarioId($user['usuario_id']));
 
 $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avatar por defecto
+
+$supabaseUrl = getenv('SUPABASE_URL') ?: '';
+$supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
 ?>
+
+<script>
+    window.SUPABASE_URL = "<?= $supabaseUrl ?>";
+    window.SUPABASE_ANON_KEY = "<?= $supabaseAnonKey ?>";
+</script>
+<script type="module">
+    import {
+        supabase
+    } from '../services/supabaseClient.js';
+    window.supabase = supabase;
+</script>
 
 <div class="max-w-[1200px] mx-auto px-6 py-8">
     <div class="mb-8">
@@ -24,12 +43,14 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
     <!-- Alertas de Sesión -->
     <?php if (isset($_SESSION['success'])): ?>
         <div class="mb-6 p-4 bg-green-50 text-green-800 border-l-4 border-[#00c46a] rounded-r-lg text-sm">
-            <?= htmlspecialchars($_SESSION['success']); unset($_SESSION['success']); ?>
+            <?= htmlspecialchars($_SESSION['success']);
+            unset($_SESSION['success']); ?>
         </div>
     <?php endif; ?>
     <?php if (isset($_SESSION['error'])): ?>
         <div class="mb-6 p-4 bg-red-50 text-red-800 border-l-4 border-red-500 rounded-r-lg text-sm">
-            <?= htmlspecialchars($_SESSION['error']); unset($_SESSION['error']); ?>
+            <?= htmlspecialchars($_SESSION['error']);
+            unset($_SESSION['error']); ?>
         </div>
     <?php endif; ?>
 
@@ -39,11 +60,11 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
             <div class="bg-white p-6 rounded-xl border border-surface-container-high shadow-sm text-center">
                 <!-- Foto -->
                 <div class="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20 mx-auto shadow-md relative mb-4">
-                    <img src="<?= $avatarUrl ?>" alt="Foto de perfil" class="w-full h-full object-cover"/>
+                    <img src="<?= $avatarUrl ?>" alt="Foto de perfil" class="w-full h-full object-cover" />
                 </div>
                 <h3 class="text-xl font-bold text-on-surface" id="view-fullname"><?= htmlspecialchars($user['nombre'] . ' ' . ($user['apellido'] ?? '')) ?></h3>
                 <p class="text-xs text-on-surface-variant mb-6"><?= htmlspecialchars($user['correo_electronico']) ?></p>
-                
+
                 <!-- Contadores Dinámicos -->
                 <div class="bg-surface-container/30 p-4 rounded-xl border border-surface-container/60 mb-6">
                     <span class="block text-2xl font-black text-primary"><?= $totalReportes ?></span>
@@ -78,29 +99,39 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                 <form action="<?= $base ?>profile?action=update" method="POST" id="profile-edit-form" onsubmit="return validateProfileEdit(event)" class="hidden text-left space-y-4">
                     <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Nombre:</label>
-                        <input name="nombre" id="edit-nombre" value="<?= htmlspecialchars($user['nombre'] ?? '') ?>" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                        <input name="nombre" id="edit-nombre" value="<?= htmlspecialchars($user['nombre'] ?? '') ?>" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" />
                         <p id="err-edit-nombre" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Apellido:</label>
-                        <input name="apellido" id="edit-apellido" value="<?= htmlspecialchars($user['apellido'] ?? '') ?>" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                        <input name="apellido" id="edit-apellido" value="<?= htmlspecialchars($user['apellido'] ?? '') ?>" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" />
                         <p id="err-edit-apellido" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
                     </div>
                     <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Correo Electrónico:</label>
+                        <input id="edit-email" type="email" value="<?= htmlspecialchars($user['correo_electronico'] ?? '') ?>" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" />
+                        <p id="err-edit-email" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Nueva Contraseña (Opcional):</label>
+                        <input id="edit-password" type="password" placeholder="Dejar en blanco para no cambiar" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" />
+                        <p id="err-edit-password" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
+                    </div>
+                    <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Teléfono:</label>
-                        <input name="telefono" id="edit-telefono" maxlength="9" value="<?= htmlspecialchars($user['telefono'] ?? '') ?>" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="XXXX-XXXX"/>
+                        <input name="telefono" id="edit-telefono" maxlength="9" value="<?= htmlspecialchars($user['telefono'] ?? '') ?>" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" placeholder="XXXX-XXXX" />
                         <p id="err-edit-telefono" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Cédula (Solo lectura):</label>
-                        <input value="<?= htmlspecialchars($user['cedula'] ?? '') ?>" type="text" disabled class="w-full bg-surface-container/30 border-none rounded-full py-2.5 px-4 text-sm text-on-surface-variant cursor-not-allowed outline-none"/>
+                        <input value="<?= htmlspecialchars($user['cedula'] ?? '') ?>" type="text" disabled class="w-full bg-surface-container/30 border-none rounded-full py-2.5 px-4 text-sm text-on-surface-variant cursor-not-allowed outline-none" />
                     </div>
                     <div>
                         <label class="block text-xs font-semibold text-primary mb-1 uppercase">Dirección Base:</label>
-                        <input name="direccion" id="edit-direccion" value="<?= htmlspecialchars($user['direccion'] ?? '') ?>" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                        <input name="direccion" id="edit-direccion" value="<?= htmlspecialchars($user['direccion'] ?? '') ?>" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" />
                         <p id="err-edit-direccion" class="hidden text-red-500 text-[10px] mt-1 px-4"></p>
                     </div>
-                    
+
                     <div class="flex gap-2 pt-2">
                         <button type="button" onclick="disableEditMode()" class="w-1/2 bg-surface-container text-on-surface py-2.5 rounded-full font-bold transition-all text-xs text-center">
                             Cancelar
@@ -122,7 +153,7 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                         <span class="material-symbols-outlined text-primary">holiday_village</span>
                         Mis Rutas (Ubicaciones)
                     </h3>
-                    
+
                     <button onclick="toggleRouteForm()" class="bg-secondary hover:bg-[#00ab5d] text-white px-4 py-2 rounded-full text-xs font-bold shadow-sm transition-all flex items-center gap-1">
                         <span class="material-symbols-outlined text-sm" id="toggle-icon">add</span>
                         Modificar rutas
@@ -134,7 +165,7 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                 <?php else: ?>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($ubicaciones as $u): ?>
-                            <div class="bg-surface-container/20 p-4 rounded-lg border border-surface-container flex justify-between items-start">
+                            <div class="bg-surface-container/20 p-4 rounded-lg border border-surface-container flex justify-between items-start hover:shadow-sm transition-shadow">
                                 <div>
                                     <div class="font-bold text-on-surface text-sm"><?= htmlspecialchars($u['nombre_referencia']) ?></div>
                                     <div class="text-[11px] text-on-surface-variant mt-1"><?= htmlspecialchars($u['descripcion_direccion'] ?: 'Sin referencias') ?></div>
@@ -143,9 +174,38 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                                         Lon: <?= htmlspecialchars($u['longitud']) ?>
                                     </div>
                                 </div>
+                                <?php if (!empty($u['suscripcion_id'])): ?>
+                                <div>
+                                    <button type="button" onclick="cancelarSuscripcion(<?= $u['suscripcion_id'] ?>)" class="text-red-500 hover:text-white hover:bg-red-500 border border-red-500 px-3 py-1.5 rounded-full text-xs font-bold transition-colors flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[14px]">delete</span> Dar de baja
+                                    </button>
+                                </div>
+                                <?php endif; ?>
                             </div>
                         <?php endforeach; ?>
                     </div>
+                    
+                    <script>
+                    function cancelarSuscripcion(subId) {
+                        if(confirm('¿Estás seguro de que deseas eliminar esta dirección de tus suscripciones activas?')) {
+                            fetch('<?= $base ?>api/cliente/cancelar_suscripcion', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({suscripcion_id: subId})
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if(data.success) {
+                                    alert('Ruta/Suscripción dada de baja con éxito.');
+                                    window.location.reload();
+                                } else {
+                                    alert('Error: ' + data.error);
+                                }
+                            })
+                            .catch(err => console.error(err));
+                        }
+                    }
+                    </script>
                 <?php endif; ?>
             </div>
 
@@ -161,22 +221,37 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Nombre de Referencia:</label>
-                            <input name="nombre" placeholder="Ej. Casa, Trabajo" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-xs text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                            <input name="nombre" placeholder="Ej. Casa, Trabajo" type="text" required class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-xs text-on-surface focus:ring-2 focus:ring-primary outline-none" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Descripción o color de fachada:</label>
-                            <input name="descripcion" placeholder="Ej. Casa verde de dos pisos" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-xs text-on-surface focus:ring-2 focus:ring-primary outline-none"/>
+                            <input name="descripcion" placeholder="Ej. Casa verde de dos pisos" type="text" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-xs text-on-surface focus:ring-2 focus:ring-primary outline-none" />
                         </div>
+                    </div>
+
+                    <!-- NUEVO: SELECTOR DE RUTA -->
+                    <div>
+                        <label class="block text-xs font-semibold text-primary mb-1 uppercase">Ruta de Recolección:</label>
+                        <select name="ruta_id" id="ruta_id" class="w-full bg-surface-container/60 border-none rounded-full py-2.5 px-4 text-sm text-on-surface focus:ring-2 focus:ring-primary outline-none" required>
+                            <option value="">Selecciona una ruta...</option>
+                            <?php foreach ($rutasDisponibles as $ruta): ?>
+                                <option value="<?= $ruta['ruta_id'] ?>">
+                                    <?= htmlspecialchars($ruta['nombre_ruta']) ?> 
+                                    (<?= htmlspecialchars($ruta['zona_sector'] ?: 'Sin sector') ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="text-on-surface/40 text-[10px] mt-1 px-4">Elige la ruta donde se encuentra tu ubicación.</p>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Latitud:</label>
-                            <input id="form-lat" name="latitud" type="text" readonly required placeholder="Seleccione en el mapa" class="w-full bg-surface-container/40 border-none rounded-full py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono"/>
+                            <input id="form-lat" name="latitud" type="text" readonly required placeholder="Seleccione en el mapa" class="w-full bg-surface-container/40 border-none rounded-full py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono" />
                         </div>
                         <div>
                             <label class="block text-xs font-semibold text-primary mb-1 uppercase">Longitud:</label>
-                            <input id="form-lon" name="longitud" type="text" readonly required placeholder="Seleccione en el mapa" class="w-full bg-surface-container/40 border-none rounded-full py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono"/>
+                            <input id="form-lon" name="longitud" type="text" readonly required placeholder="Seleccione en el mapa" class="w-full bg-surface-container/40 border-none rounded-full py-2.5 px-4 text-sm text-on-surface cursor-not-allowed outline-none font-mono" />
                         </div>
                     </div>
 
@@ -222,21 +297,26 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
 
     // Máscara de Celular (igual a registro)
     const telInput = document.getElementById('edit-telefono');
-    telInput.addEventListener('input', function() {
-        let digits = this.value.replace(/\D/g, '');
-        if (digits.length > 4) {
-            this.value = digits.slice(0, 4) + '-' + digits.slice(4, 8);
-        } else {
-            this.value = digits;
-        }
-    });
+    if (telInput) {
+        telInput.addEventListener('input', function() {
+            let digits = this.value.replace(/\D/g, '');
+            if (digits.length > 4) {
+                this.value = digits.slice(0, 4) + '-' + digits.slice(4, 8);
+            } else {
+                this.value = digits;
+            }
+        });
+    }
 
-    function validateProfileEdit(e) {
+    async function validateProfileEdit(e) {
+        e.preventDefault();
         clearProfileErrors();
         let hasError = false;
 
         const nombre = document.getElementById('edit-nombre').value.trim();
         const apellido = document.getElementById('edit-apellido').value.trim();
+        const email = document.getElementById('edit-email').value.trim();
+        const password = document.getElementById('edit-password').value;
         const telefono = document.getElementById('edit-telefono').value.trim();
         const direccion = document.getElementById('edit-direccion').value.trim();
 
@@ -250,7 +330,12 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
             document.getElementById('err-edit-apellido').classList.remove('hidden');
             hasError = true;
         }
-        
+        if (!email) {
+            document.getElementById('err-edit-email').textContent = 'El correo electrónico es obligatorio.';
+            document.getElementById('err-edit-email').classList.remove('hidden');
+            hasError = true;
+        }
+
         const telRegex = /^\d{4}-\d{4}$/;
         if (telefono && !telRegex.test(telefono)) {
             document.getElementById('err-edit-telefono').textContent = 'Celular inválido. Debe ser XXXX-XXXX.';
@@ -259,21 +344,46 @@ $avatarUrl = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Avata
         }
 
         if (hasError) {
-            e.preventDefault();
             return false;
         }
 
-        return confirm('¿Está seguro de que desea guardar los cambios en su perfil?');
+        if (confirm('¿Está seguro de que desea guardar los cambios en su perfil?')) {
+            try {
+                const updatePayload = {
+                    email: email
+                };
+                if (password) {
+                    updatePayload.password = password;
+                }
+
+                if (window.supabase) {
+                    const {
+                        data,
+                        error
+                    } = await window.supabase.auth.updateUser(updatePayload);
+                    if (error) {
+                        alert("Error al actualizar credenciales: " + error.message);
+                        return false;
+                    }
+                }
+
+                document.getElementById('profile-edit-form').submit();
+            } catch (error) {
+                alert("Ocurrió un error inesperado al conectar con Supabase.");
+                console.error(error);
+            }
+        }
+        return false;
     }
 
     function toggleRouteForm() {
         var section = document.getElementById('add-route-section');
         var icon = document.getElementById('toggle-icon');
-        
+
         if (section.classList.contains('hidden')) {
             section.classList.remove('hidden');
             icon.innerText = "close";
-            
+
             if (!selectionMapInitialized) {
                 setTimeout(function() {
                     var defaultLat = 8.42867;
